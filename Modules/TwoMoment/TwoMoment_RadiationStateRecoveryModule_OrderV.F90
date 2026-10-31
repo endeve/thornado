@@ -2,13 +2,31 @@ MODULE TwoMoment_RadiationStateRecoveryModule_OrderV
 
   USE KindModule, ONLY: DP
   USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_IS_FINITE
-  USE TwoMoment_RetainedArithmeticModule
-  USE TwoMoment_CollisionOperatorModule_OrderV, ONLY: ComputeCollisionResidual_OrderV_Point, &
+  USE TwoMoment_RetainedArithmeticModule, ONLY: RetainedReal
+  USE TwoMoment_CollisionOperatorModule_OrderV, ONLY: CollisionFluxStrictlyInterior, &
+    ComputeCollisionResidual_OrderV_Point, &
     ComputeCollisionClosureDerivatives_OrderV_Point, CollisionStateAdmissible_OrderV_Point, ComputeCollisionMetrics_OrderV_Point, &
-    ComputeCollisionPressure_OrderV_Point, ComputeCollisionPressureIncrement_OrderV_Point, ComputeCollisionDensityIncrement_OrderV_Point, IncomingRadiationCache
+    ComputeCollisionPressure_OrderV_Point, ComputeCollisionPressureIncrement_OrderV_Point, ComputeCollisionDensityIncrement_OrderV_Point, IncomingRadiationCache, CollisionGeometryCache
 
+  USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_FMA
   IMPLICIT NONE
   PRIVATE
+  INTERFACE ASSIGNMENT(=)
+    MODULE PROCEDURE AssignReal
+  END INTERFACE
+  INTERFACE OPERATOR(+)
+    MODULE PROCEDURE AddPair, AddReal, RealAdd
+  END INTERFACE
+  INTERFACE OPERATOR(-)
+    MODULE PROCEDURE SubtractPair, SubtractReal, RealSubtract, NegatePair
+  END INTERFACE
+  INTERFACE OPERATOR(*)
+    MODULE PROCEDURE MultiplyPair, MultiplyReal, RealMultiply
+  END INTERFACE
+  INTERFACE OPERATOR(/)
+    MODULE PROCEDURE DividePair, DivideReal, RealDivide
+  END INTERFACE
+
   PUBLIC :: ComputeIndependentRadiationResidual, ComputeIndependentRadiationColumn
   PUBLIC :: ComputeConservationGeometry, ReconstructConservativeRadiation
   PUBLIC :: ProjectRadiationCone, ProjectConservativeDirection
@@ -26,6 +44,378 @@ MODULE TwoMoment_RadiationStateRecoveryModule_OrderV
 
 CONTAINS
 
+
+  ELEMENTAL SUBROUTINE AssignReal( A, B )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(out) :: A
+    REAL(DP), INTENT(in) :: B
+    A % High = B
+    A % Low = 0.0_DP
+  END SUBROUTINE AssignReal
+
+  ELEMENTAL FUNCTION Retain( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: A
+    REAL(DP), INTENT(in), OPTIONAL :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: X, Y, Z
+
+    IF( .NOT. PRESENT(B) )THEN
+      C % High = A+0.0_DP
+      C % Low = 0.0_DP
+      RETURN
+    END IF
+    Y = B
+    X = A + Y
+    Z = X - A
+    C % High = X
+    C % Low = ( A - ( X - Z ) ) + ( Y - Z )
+  END FUNCTION Retain
+
+  ELEMENTAL FUNCTION RetainedValue( A ) RESULT(B)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    REAL(DP) :: B
+    B = A % High + A % Low
+  END FUNCTION RetainedValue
+
+  ELEMENTAL FUNCTION AddPair( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A, B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: S, V, E
+    S = A % High + B % High
+    V = S - A % High
+    E = ( A % High - ( S - V ) ) + ( B % High - V )
+    C = Retain( S, ( E + A % Low ) + B % Low )
+  END FUNCTION AddPair
+
+  ELEMENTAL FUNCTION AddReal( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    REAL(DP), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: S, V, E
+    S = A % High+B
+    V = S-A % High
+    E = (A % High-(S-V))+(B-V)
+    C = Retain(S,E+A % Low)
+  END FUNCTION AddReal
+
+  ELEMENTAL FUNCTION RealAdd( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: A
+    TYPE(RetainedReal), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: S, V, E
+    S = A+B % High
+    V = S-A
+    E = (A-(S-V))+(B % High-V)
+    C = Retain(S,E+B % Low)
+  END FUNCTION RealAdd
+
+  ELEMENTAL FUNCTION NegatePair( A ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    TYPE(RetainedReal) :: C
+    C % High = -A % High
+    C % Low = -A % Low
+  END FUNCTION NegatePair
+
+  ELEMENTAL FUNCTION SubtractPair( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A, B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: S, V, E
+    S = A % High-B % High
+    V = S-A % High
+    E = (A % High-(S-V))-(B % High+V)
+    C = Retain(S,(E+A % Low)-B % Low)
+  END FUNCTION SubtractPair
+
+  ELEMENTAL FUNCTION SubtractReal( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    REAL(DP), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: S, V, E
+    S = A % High-B
+    V = S-A % High
+    E = (A % High-(S-V))-(B+V)
+    C = Retain(S,E+A % Low)
+  END FUNCTION SubtractReal
+
+  ELEMENTAL FUNCTION RealSubtract( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: A
+    TYPE(RetainedReal), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: S, V, E
+    S = A-B % High
+    V = S-A
+    E = (A-(S-V))-(B % High+V)
+    C = Retain(S,E-B % Low)
+  END FUNCTION RealSubtract
+
+  ELEMENTAL FUNCTION MultiplyPair( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A, B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: P,E
+    ! Match the checked prototype on CPUs. Explicit association is required;
+    ! compile this arithmetic without reassociation/unsafe fast-math.
+    P = A % High * B % High
+    E = IEEE_FMA(A % High,B % High,-P)
+    C = Retain( P, E + A % High * B % Low &
+                      + A % Low * B % High + A % Low * B % Low )
+  END FUNCTION MultiplyPair
+
+  ELEMENTAL FUNCTION MultiplyReal( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    REAL(DP), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: P,E
+    P = A % High*B
+    E = IEEE_FMA(A % High,B,-P)
+    C = Retain(P,E+A % Low*B)
+  END FUNCTION MultiplyReal
+
+  ELEMENTAL FUNCTION RealMultiply( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: A
+    TYPE(RetainedReal), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: P,E
+    P = A*B % High
+    E = IEEE_FMA(A,B % High,-P)
+    C = Retain(P,E+A*B % Low)
+  END FUNCTION RealMultiply
+
+  ELEMENTAL FUNCTION DividePair( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A, B
+    TYPE(RetainedReal) :: C, R
+    REAL(DP) :: Q
+    Q = A % High / B % High
+    R = A - B * Q
+    C = Retain( Q, RetainedValue(R) / B % High )
+  END FUNCTION DividePair
+
+  ELEMENTAL FUNCTION DivideReal( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    REAL(DP), INTENT(in) :: B
+    TYPE(RetainedReal) :: C, R, P
+    REAL(DP) :: Q
+    Q = A % High/B
+    P = RetainedProduct(B,Q)
+    R = A-P
+    C = Retain(Q,RetainedValue(R)/B)
+  END FUNCTION DivideReal
+
+  ELEMENTAL FUNCTION RealDivide( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: A
+    TYPE(RetainedReal), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    C = Retain(A) / B
+  END FUNCTION RealDivide
+
+  ELEMENTAL FUNCTION RetainedAbs( A ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    TYPE(RetainedReal) :: C
+    C = A
+    IF( A % High < 0.0_DP ) C = -A
+  END FUNCTION RetainedAbs
+
+  ELEMENTAL FUNCTION RetainedSqrt( A ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    TYPE(RetainedReal) :: C
+    INTEGER :: I
+    C = SQRT(MAX(0.0_DP,A % High))
+    IF( C % High == 0.0_DP ) RETURN
+    DO I = 1, 2
+      C = C + ( A - C * C ) / ( 2.0_DP * C )
+    END DO
+  END FUNCTION RetainedSqrt
+
+  ELEMENTAL FUNCTION RetainedExp( A ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    TYPE(RetainedReal) :: C, R
+    TYPE(RetainedReal), PARAMETER :: LnStep = RetainedReal(4.33216987849965804E-02_DP,1.44940425865393722E-18_DP)
+    TYPE(RetainedReal), PARAMETER :: Coefficient(0:13) = [ &
+      RetainedReal(1.00000000000000000E+00_DP,0.00000000000000000E+00_DP), &
+      RetainedReal(1.00000000000000000E+00_DP,0.00000000000000000E+00_DP), &
+      RetainedReal(5.00000000000000000E-01_DP,0.00000000000000000E+00_DP), &
+      RetainedReal(1.66666666666666657E-01_DP,9.25185853854297066E-18_DP), &
+      RetainedReal(4.16666666666666644E-02_DP,2.31296463463574266E-18_DP), &
+      RetainedReal(8.33333333333333322E-03_DP,1.15648231731787138E-19_DP), &
+      RetainedReal(1.38888888888888894E-03_DP,-5.30054395437357706E-20_DP), &
+      RetainedReal(1.98412698412698413E-04_DP,1.72095582934207053E-22_DP), &
+      RetainedReal(2.48015873015873016E-05_DP,2.15119478667758816E-23_DP), &
+      RetainedReal(2.75573192239858925E-06_DP,-1.85839327404647208E-22_DP), &
+      RetainedReal(2.75573192239858883E-07_DP,2.37677146222502973E-23_DP), &
+      RetainedReal(2.50521083854417202E-08_DP,-1.44881407093591197E-24_DP), &
+      RetainedReal(2.08767569878681002E-09_DP,-1.20734505911325997E-25_DP), &
+      RetainedReal(1.60590438368216133E-10_DP,1.25852945887520981E-26_DP) ]
+    TYPE(RetainedReal), PARAMETER :: FractionalPower(0:15) = [ &
+      RetainedReal(1.00000000000000000E+00_DP,0.00000000000000000E+00_DP), &
+      RetainedReal(1.04427378242741375E+00_DP,8.55188970553796489E-17_DP), &
+      RetainedReal(1.09050773266525769E+00_DP,-3.04678207981247115E-17_DP), &
+      RetainedReal(1.13878863475669156E+00_DP,8.91281267602540778E-17_DP), &
+      RetainedReal(1.18920711500272103E+00_DP,3.98201523146564611E-17_DP), &
+      RetainedReal(1.24185781207348400E+00_DP,4.65802759183693679E-17_DP), &
+      RetainedReal(1.29683955465100964E+00_DP,2.53825027948883150E-17_DP), &
+      RetainedReal(1.35425554693689265E+00_DP,7.70094837980298946E-17_DP), &
+      RetainedReal(1.41421356237309515E+00_DP,-9.66729331345291345E-17_DP), &
+      RetainedReal(1.47682614593949935E+00_DP,-3.48399455689279580E-17_DP), &
+      RetainedReal(1.54221082540794074E+00_DP,7.94983480969762086E-17_DP), &
+      RetainedReal(1.61049033194925428E+00_DP,2.47071925697978879E-17_DP), &
+      RetainedReal(1.68179283050742900E+00_DP,8.19901002058149652E-17_DP), &
+      RetainedReal(1.75625216037329945E+00_DP,2.96014069544887331E-17_DP), &
+      RetainedReal(1.83400808640934243E+00_DP,3.28310722424562720E-17_DP), &
+      RetainedReal(1.91520656139714740E+00_DP,-1.06199460561959626E-16_DP) ]
+    INTEGER :: I, N, J, Power
+
+    IF( A % High < -745.0_DP )THEN
+      C = 0.0_DP
+      RETURN
+    END IF
+    ! exp(A) = 2**Power * 2**(J/16) * exp(R), |R| <= log(2)/32.
+    ! The degree-13 Taylor remainder is below 5.87e-35.
+    N = NINT(A % High/LnStep % High)
+    J = MODULO(N,16)
+    Power = (N-J)/16
+    R = A-LnStep*REAL(N,DP)
+    C = Coefficient(13)
+    DO I = 12, 0, -1
+      C = Coefficient(I)+R*C
+    END DO
+    C = C*FractionalPower(J)
+    C % High = SCALE(C % High,Power)
+    C % Low = SCALE(C % Low,Power)
+  END FUNCTION RetainedExp
+
+  ELEMENTAL FUNCTION RetainedFermi( A ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    TYPE(RetainedReal) :: C, Tail
+    Tail = RetainedExp(-RetainedAbs(A))
+    IF( A % High >= 0.0_DP )THEN
+      C = Tail / ( 1.0_DP + Tail )
+    ELSE
+      C = 1.0_DP / ( 1.0_DP + Tail )
+    END IF
+  END FUNCTION RetainedFermi
+
+  PURE SUBROUTINE RetainedAccumulate( Sum, Term )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(inout) :: Sum
+    TYPE(RetainedReal), INTENT(in) :: Term
+    Sum = Sum + Term
+  END SUBROUTINE RetainedAccumulate
+
+  ELEMENTAL FUNCTION RetainedProduct( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: A, B
+    TYPE(RetainedReal) :: C
+    C % High = A*B
+    C % Low = IEEE_FMA(A,B,-C % High)
+  END FUNCTION RetainedProduct
+
+
   PURE SUBROUTINE SolveRetainedSmall(N,A,B,Info)
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -33,37 +423,68 @@ CONTAINS
     !$ACC ROUTINE SEQ
 #endif
     INTEGER, INTENT(in) :: N
-    TYPE(RetainedReal), INTENT(inout) :: A(N,N), B(:,:)
+    TYPE(RetainedReal), INTENT(inout) :: A(N,N),B(:,:)
     INTEGER, INTENT(out) :: Info
-    TYPE(RetainedReal) :: Row(N), RHS(SIZE(B,2)), Factor
-    INTEGER :: J,L,P
+    TYPE(RetainedReal) :: Swap,Factor
+    REAL(DP) :: Largest,Candidate
+    INTEGER :: J,L,P,C
     Info=1
     DO J=1,N
-      P=J-1+MAXLOC(ABS(RetainedValue(A(J:N,J))),DIM=1)
-      IF( ABS(RetainedValue(A(P,J)))<=TINY(1.0_DP) ) RETURN
-      Row=A(J,:)
-      A(J,:)=A(P,:)
-      A(P,:)=Row
-      RHS=B(J,:)
-      B(J,:)=B(P,:)
-      B(P,:)=RHS
+      P=J
+      Largest=ABS(RetainedValue(A(J,J)))
       DO L=J+1,N
-        Factor=A(L,J)/A(J,J)
-        A(L,J+1:N)=A(L,J+1:N)-Factor*A(J,J+1:N)
-        B(L,:)=B(L,:)-Factor*B(J,:)
+        Candidate=ABS(RetainedValue(A(L,J)))
+        IF( Candidate>Largest )THEN
+          P=L
+          Largest=Candidate
+        END IF
+      END DO
+      IF( ABS(RetainedValue(A(P,J)))<=TINY(1.0_DP) ) RETURN
+      IF( P/=J )THEN
+        DO C=1,N
+          Swap=A(J,C)
+          A(J,C)=A(P,C)
+          A(P,C)=Swap
+        END DO
+        DO C=1,SIZE(B,2)
+          Swap=B(J,C)
+          B(J,C)=B(P,C)
+          B(P,C)=Swap
+        END DO
+      END IF
+      DO L=J+1,N
+        IF( A(L,J)%High==0.0_DP .AND. A(L,J)%Low==0.0_DP ) CYCLE
+        IF( A(J,J)%High==1.0_DP .AND. A(J,J)%Low==0.0_DP )THEN
+          Factor=A(L,J)
+        ELSE
+          Factor=A(L,J)/A(J,J)
+        END IF
+        DO C=J+1,N
+          A(L,C)=A(L,C)-Factor*A(J,C)
+        END DO
+        DO C=1,SIZE(B,2)
+          B(L,C)=B(L,C)-Factor*B(J,C)
+        END DO
       END DO
     END DO
     DO J=N,1,-1
       DO L=J+1,N
-        B(J,:)=B(J,:)-A(J,L)*B(L,:)
+        IF( A(J,L)%High==0.0_DP .AND. A(J,L)%Low==0.0_DP ) CYCLE
+        DO C=1,SIZE(B,2)
+          B(J,C)=B(J,C)-A(J,L)*B(L,C)
+        END DO
       END DO
-      B(J,:)=B(J,:)/A(J,J)
+      IF( A(J,J)%High/=1.0_DP .OR. A(J,J)%Low/=0.0_DP )THEN
+        DO C=1,SIZE(B,2)
+          B(J,C)=B(J,C)/A(J,J)
+        END DO
+      END IF
     END DO
     Info=0
   END SUBROUTINE SolveRetainedSmall
 
   PURE SUBROUTINE ComputeSharedProcessTangent(M,NF,Active,U,D0,I0,V0,X,DP0,DQM,DX,Info, &
-      Response_Option)
+      Response_Option,Incoming_Option)
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -71,6 +492,7 @@ CONTAINS
 #endif
     INTEGER, INTENT(in) :: M,NF,Active(:)
     TYPE(RetainedReal), INTENT(inout), OPTIONAL :: Response_Option(4,4,M)
+    TYPE(IncomingRadiationCache), INTENT(in), OPTIONAL :: Incoming_Option(M)
     REAL(DP), INTENT(in) :: U(M),D0(M),I0(M,3),V0(3)
     TYPE(RetainedReal), INTENT(in) :: X(:),DP0(M,4),DQM(NF+4)
     TYPE(RetainedReal), INTENT(out) :: DX(:)
@@ -79,7 +501,7 @@ CONTAINS
     TYPE(RetainedReal) :: ED,SumR,SumB(3),DV(3),Term,DE
     REAL(DP) :: KD(3,3),KI(3,3,3),VC(3)
     INTEGER :: Q,J,L,Pass,N
-    LOGICAL :: Move(3)
+    LOGICAL :: Move(3),IncomingState
     N=4*M
     V=Retain(V0)
     Move=.FALSE.
@@ -103,7 +525,15 @@ CONTAINS
           DO J=1,3
             I(J)=I0(Q,J)+X(J*M+Q)
           END DO
-          CALL ComputeCollisionPressure_OrderV_Point(D,I,KN)
+          IncomingState=X(Q)%High==0.0_DP .AND. X(Q)%Low==0.0_DP
+          DO J=1,3
+            IncomingState=IncomingState .AND. X(J*M+Q)%High==0.0_DP .AND. X(J*M+Q)%Low==0.0_DP
+          END DO
+          IF( PRESENT(Incoming_Option) .AND. IncomingState )THEN
+            KN=Incoming_Option(Q)%Pressure
+          ELSE
+            CALL ComputeCollisionPressure_OrderV_Point(D,I,KN)
+          END IF
           CALL ComputeCollisionClosureDerivatives_OrderV_Point(RetainedValue(D),RetainedValue(I),KD,KI)
           A4=0.0_DP
           A4(1,1)=1.0_DP
@@ -222,14 +652,31 @@ CONTAINS
     TYPE(IncomingRadiationCache), INTENT(in), OPTIONAL :: Incoming_Option(M)
     TYPE(RetainedReal), INTENT(in), OPTIONAL :: EnergyRatio_Option(M)
     INTEGER, INTENT(in), OPTIONAL :: Components_Option(M)
-    INTEGER :: Label(M),E,Q,J,L,R,Root,NE,Count,Pivot
+    INTEGER :: Label(M),ComponentSize(M),E,Q,J,L,R,Root,NE,Pivot
     TYPE(RetainedReal) :: OldN(M),Positive(M),Target,SumPositive,Correction,Capacity,CountQ,SumOther
     TYPE(RetainedReal) :: Floor,SumFloor,SumExcess,Available
     TYPE(RetainedReal) :: OldP(M),Event,EnergyCoefficient,NewP,Scale
     REAL(DP) :: Best
     LOGICAL :: HasNegative
     NE=M/(2*NF)
+    ! Connected components retain number separately; no interpolation or
+    ! redistribution across a zero-coefficient edge is invented.
+    IF( PRESENT(Components_Option) )THEN
+      Label=Components_Option
+    ELSE
+      CALL BuildScatteringComponents(M,NF,A,B,Kind,Gain,Loss,Label)
+    END IF
+    ComponentSize=0
     DO Q=1,M
+      ComponentSize(Label(Q))=ComponentSize(Label(Q))+1
+    END DO
+    IF( ALL(ComponentSize==1) )THEN
+      P(:,1)=NumberIncrement
+      IF( PRESENT(NonScatteringEnergy_Option) ) QM(NF+1)=NonScatteringEnergy_Option
+      RETURN
+    END IF
+    DO Q=1,M
+      IF( ComponentSize(Label(Q))==1 ) CYCLE
       IF( PRESENT(Incoming_Option) )THEN
         OldN(Q)=Incoming_Option(Q)%Number
       ELSE
@@ -239,16 +686,12 @@ CONTAINS
         END DO
       END IF
     END DO
-    ! Connected components retain number separately; no interpolation or
-    ! redistribution across a zero-coefficient edge is invented.
-    IF( PRESENT(Components_Option) )THEN
-      Label=Components_Option
-    ELSE
-      CALL BuildScatteringComponents(M,NF,A,B,Kind,Gain,Loss,Label)
-    END IF
     DO Root=1,M
       IF( Label(Root)/=Root ) CYCLE
-      Count=0
+      IF( ComponentSize(Root)==1 )THEN
+        P(Root,1)=NumberIncrement(Root)
+        CYCLE
+      END IF
       Target=0.0_DP
       SumPositive=0.0_DP
       SumFloor=0.0_DP
@@ -257,7 +700,6 @@ CONTAINS
       Best=-1.0_DP
       DO Q=1,M
         IF( Label(Q)/=Root ) CYCLE
-        Count=Count+1
         Target=Target+W(Q)*(OldN(Q)+NumberIncrement(Q))
         Positive(Q)=W(Q)*(OldN(Q)+P(Q,1))
         Floor=W(Q)*MAX(128.0_DP*TINY(1.0_DP), &
@@ -276,11 +718,6 @@ CONTAINS
         Best=RetainedValue(Positive(Q))
         Pivot=Q
       END DO
-      IF( Count==1 )THEN
-        ! No number-redistributing process reaches this bin at all.
-        P(Root,1)=NumberIncrement(Root)
-        CYCLE
-      END IF
       IF( .NOT. HasNegative )THEN
         IF( ABS(RetainedValue(SumPositive-Target)) &
             <=512.0_DP*EPSILON(1.0_DP)**2*ABS(RetainedValue(SumPositive)) ) CYCLE
@@ -342,12 +779,13 @@ CONTAINS
   PURE SUBROUTINE ProjectSharedProcessEndpoint &
     ( M,NF,Active,W,U,D0,I0,V0,Cap,A,B,Kind,Gain,Loss,Chi,Sigma,X0,P,QM,X,Info, &
       NumberIncrement_Option,NonScatteringEnergy_Option,Incoming_Option,IncomingEnergy_Option, &
-      Response_Option,EnergyRatio_Option,Components_Option)
+      Response_Option,EnergyRatio_Option,Components_Option,Geometry_Option)
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
 #endif
+    TYPE(CollisionGeometryCache), INTENT(out), OPTIONAL :: Geometry_Option
     INTEGER, INTENT(in) :: M,NF,Active(:),A(:),B(:),Kind(:)
     TYPE(RetainedReal), INTENT(inout), OPTIONAL :: Response_Option(4,4,M)
     TYPE(RetainedReal), INTENT(in), OPTIONAL :: EnergyRatio_Option(M)
@@ -366,6 +804,7 @@ CONTAINS
     TYPE(RetainedReal) :: NativeN,NativeG(3),OldG(3),NewP1,Factor,NativeSlack,FluxScale
     INTEGER :: Pass,Q,S,NE,E,Partner,Donor,J,L,F
     LOGICAL :: Adjusted
+    IF( PRESENT(Geometry_Option) ) Geometry_Option%Valid=.FALSE.
     NE=M/(2*NF)
     DO Pass=1,12
       IF( PRESENT(NumberIncrement_Option) ) &
@@ -398,16 +837,17 @@ CONTAINS
         END IF
         IF( RetainedValue(NativeN)<=0.0_DP ) CYCLE
         NativeG=OldG+P(Q,2:4)
-        INorm=0.0_DP
-        DO J=1,3
-          INorm=INorm+NativeG(J)*NativeG(J)
-        END DO
-        INorm=RetainedSqrt(INorm)
         FluxScale=NativeN
         DO J=1,3
           FluxScale=FluxScale+RetainedAbs(OldG(J))+RetainedAbs(P(Q,J+1))
         END DO
         NativeSlack=(128.0_DP*EPSILON(1.0_DP)**2)*FluxScale
+        IF( CollisionFluxStrictlyInterior(NativeN-NativeSlack,NativeG) ) CYCLE
+        INorm=0.0_DP
+        DO J=1,3
+          INorm=INorm+NativeG(J)*NativeG(J)
+        END DO
+        INorm=RetainedSqrt(INorm)
         IF( RetainedValue(INorm-NativeN+NativeSlack)<=0.0_DP ) CYCLE
         Factor=0.0_DP
         IF( RetainedValue(NativeN-NativeSlack)>0.0_DP .AND. RetainedValue(INorm)>0.0_DP ) &
@@ -424,7 +864,9 @@ CONTAINS
       ! do not cancel a large previous angular source against its repair.
       QM(NF+2:NF+4)=0.0_DP
       DO Q=1,M
-        QM(NF+2:NF+4)=QM(NF+2:NF+4)+U(Q)*P(Q,2:4)
+        DO J=1,3
+          QM(NF+1+J)=QM(NF+1+J)+U(Q)*P(Q,J+1)
+        END DO
       END DO
       X=X0
       ! When an almost empty bin is populated, starting C2P at its old tiny
@@ -459,10 +901,12 @@ CONTAINS
           X(J*M+Q)=NativeG(J)-I0(Q,J)
         END DO
       END DO
-      CALL RecoverSharedProcessState(M,NF,Active,W,U,D0,I0,V0,Cap,P,QM,X,Info,Incoming_Option,IncomingEnergy_Option,Response_Option)
+      CALL RecoverSharedProcessState(M,NF,Active,W,U,D0,I0,V0,Cap,P,QM,X,Info,Incoming_Option,IncomingEnergy_Option,Response_Option,Geometry_Option)
       IF( Info==0 ) RETURN
       IF( Info<1001 .OR. Info>3000 ) RETURN
-      Estimate=RetainedValue(D0+X(1:M))
+      DO Q=1,M
+        Estimate(Q)=RetainedValue(D0(Q)+X(Q))
+      END DO
       Adjusted=.FALSE.
       ! Project density violations by a SAME-SPECIES scattering transfer.
       ! Its two number legs share one event; its energy goes to the opposite
@@ -582,9 +1026,12 @@ CONTAINS
         IF( Sigma(Q)<=0.0_DP ) CYCLE
         D=D0(Q)+X(Q)
         IF( RetainedValue(D)<=0.0_DP ) CYCLE
-        INorm=0.0_DP
         DO J=1,3
           I(J)=I0(Q,J)+X(J*M+Q)
+        END DO
+        IF( CollisionFluxStrictlyInterior(D,I) ) CYCLE
+        INorm=0.0_DP
+        DO J=1,3
           INorm=INorm+I(J)*I(J)
         END DO
         INorm=RetainedSqrt(INorm)
@@ -612,9 +1059,72 @@ CONTAINS
     Info=4000
   END SUBROUTINE ProjectSharedProcessEndpoint
 
+  PURE SUBROUTINE ComputeSharedBinResidual(D0,I0,DD,DI,V,DV,P,KN,F,D,IV,Converged,Info,Incoming_Option,PressureIncrement_Option,IncomingPressure_Option)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: D0,I0(:)
+    TYPE(RetainedReal), INTENT(in) :: DD,DI(3),V(3),DV(3),P(:)
+    TYPE(RetainedReal), INTENT(out) :: KN(3,3),F(4)
+    REAL(DP), INTENT(out) :: D,IV(3)
+    LOGICAL, INTENT(out) :: Converged
+    INTEGER, INTENT(out) :: Info
+    TYPE(RetainedReal), INTENT(out), OPTIONAL :: PressureIncrement_Option(3,3),IncomingPressure_Option(3,3)
+    TYPE(IncomingRadiationCache), INTENT(in), OPTIONAL :: Incoming_Option
+    TYPE(RetainedReal) :: K0(3,3),DK(3,3),DN,DVI
+    REAL(DP) :: Scale,Bound,VC(3),OldI(3)
+    INTEGER :: J,L
+    Info=1
+    Converged=.FALSE.
+    D=RetainedValue(D0+DD)
+    IF( D<=TINY(1.0_DP) .OR. .NOT. IEEE_IS_FINITE(D) ) RETURN
+    DO J=1,3
+      OldI(J)=I0(J)
+      IV(J)=RetainedValue(OldI(J)+DI(J))
+    END DO
+    VC=RetainedValue(V)
+    IF( PRESENT(Incoming_Option) )THEN
+      K0=Incoming_Option%Pressure
+      CALL ComputeCollisionPressureIncrement_OrderV_Point(D0,OldI,DD,DI,DK,Incoming_Option)
+    ELSE
+      CALL ComputeCollisionPressure_OrderV_Point(Retain(D0),Retain(OldI),K0)
+      CALL ComputeCollisionPressureIncrement_OrderV_Point(D0,OldI,DD,DI,DK)
+    END IF
+    KN=K0+DK
+    IF( PRESENT(PressureIncrement_Option) ) PressureIncrement_Option=DK
+    IF( PRESENT(IncomingPressure_Option) ) IncomingPressure_Option=K0
+    CALL ComputeCollisionDensityIncrement_OrderV_Point(DD,DI,OldI,V,DV,DN,DVI)
+    F(1)=DN-P(1)
+    DO J=1,3
+      F(J+1)=DI(J)-P(J+1)
+      DO L=1,3
+        F(J+1)=F(J+1)+V(L)*DK(J,L)+DV(L)*K0(J,L)
+      END DO
+    END DO
+    Scale=ABS(RetainedValue(DD))+ABS(RetainedValue(P(1)))
+    DO J=1,3
+      Scale=Scale+ABS(RetainedValue(V(J)*DI(J)))+ABS(RetainedValue(DV(J)*I0(J)))
+    END DO
+    Bound=MAX(128.0_DP*EPSILON(1.0_DP)**2*Scale,1.0e-300_DP)
+    Converged=ABS(RetainedValue(F(1)))<=Bound
+    DO J=1,3
+      Scale=ABS(RetainedValue(DI(J)))+ABS(RetainedValue(P(J+1)))
+      DO L=1,3
+        Scale=Scale+ABS(RetainedValue(V(L)*DK(J,L)))+ABS(RetainedValue(DV(L)*K0(J,L)))
+      END DO
+      Scale=Scale+SUM(ABS(VC))*(ABS(RetainedValue(DD))+SUM(ABS(RetainedValue(DI)))) &
+        +SUM(ABS(RetainedValue(DV)))*D0
+      Bound=MAX(128.0_DP*EPSILON(1.0_DP)**2*Scale,1.0e-300_DP)
+      Converged=Converged .AND. ABS(RetainedValue(F(J+1)))<=Bound
+    END DO
+    Info=0
+  END SUBROUTINE ComputeSharedBinResidual
+
   PURE SUBROUTINE RecoverSharedProcessState &
     (M,NF,Active,W,U,D0,I0,V0,Cap,P,QM,X,Info,Incoming_Option,IncomingEnergy_Option, &
-      Response_Option)
+      Response_Option,Geometry_Option)
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -623,6 +1133,7 @@ CONTAINS
     ! P contains the integrated native collision terms, QM their separately
     ! paired, process-resolved comoving moments.  Neither is reconstructed from
     ! the rounded primitive endpoint. No EOS or opacity evaluation occurs here.
+    TYPE(CollisionGeometryCache), INTENT(out), OPTIONAL :: Geometry_Option
     INTEGER, INTENT(in) :: M,NF,Active(:)
     TYPE(RetainedReal), INTENT(inout), OPTIONAL :: Response_Option(4,4,M)
     REAL(DP), INTENT(in) :: W(M),U(M),D0(M),I0(M,3),V0(3),Cap
@@ -634,10 +1145,11 @@ CONTAINS
     TYPE(RetainedReal) :: V(3),DV(3),DI(3),DK(3,3),K0(3,3),KN(3,3)
     TYPE(RetainedReal) :: A4(4,4),B4(4,4),A3(3,3),B3(3,1),DVStep(3)
     TYPE(RetainedReal) :: ED,ED0,SumR,SumB(3),F(4),DN,DVI,Term
-    TYPE(RetainedReal) :: VelocityResidual(3),EnergyChange
+    TYPE(RetainedReal) :: VelocityResidual(3),EnergyChange,DeltaKV
     REAL(DP) :: KD(3,3),KI(3,3,3),VC(3),D,IV(3),Bound,Scale
     LOGICAL :: Converged,Finished,Move(3)
     INTEGER :: Q,J,L,Sweep,Pass,N
+    IF( PRESENT(Geometry_Option) ) Geometry_Option%Valid=.FALSE.
     N=4*M
     DV=0.0_DP
     Move=.FALSE.
@@ -657,12 +1169,64 @@ CONTAINS
     END IF
     Info=1
     DO Sweep=1,20
+      IF( PRESENT(Geometry_Option) )THEN
+        Geometry_Option%FrameEnergy=0.0_DP
+        Geometry_Option%MomentumScale=0.0_DP
+      END IF
       V=V0+DV
       VC=RetainedValue(V)
       ED=0.0_DP
       SumR=0.0_DP
       SumB=0.0_DP
       Finished=.TRUE.
+      DO Q=1,M
+        DO J=1,3
+          DI(J)=X(J*M+Q)
+        END DO
+        IF( PRESENT(Incoming_Option) )THEN
+          CALL ComputeSharedBinResidual(D0(Q),I0(Q,:),X(Q),DI,V,DV,P(Q,:), &
+            KN,F,D,IV,Converged,Info,Incoming_Option(Q), &
+            PressureIncrement_Option=DK,IncomingPressure_Option=K0)
+        ELSE
+          CALL ComputeSharedBinResidual(D0(Q),I0(Q,:),X(Q),DI,V,DV,P(Q,:), &
+            KN,F,D,IV,Converged,Info, &
+            PressureIncrement_Option=DK,IncomingPressure_Option=K0)
+        END IF
+        IF( Info/=0 )THEN
+          Info=1000+Q
+          RETURN
+        END IF
+        ED=ED+U(Q)*X(Q)
+        Finished=Finished .AND. Converged
+        IF( PRESENT(Geometry_Option) .AND. Finished )THEN
+          DO J=1,3
+            DeltaKV=0.0_DP
+            DO L=1,3
+              DeltaKV=DeltaKV+V(L)*DK(J,L)+DV(L)*K0(J,L)
+            END DO
+            Geometry_Option%MomentumScale(J)=Geometry_Option%MomentumScale(J)+U(Q) &
+              *(ABS(RetainedValue(DI(J)))+ABS(RetainedValue(V(J)*X(Q)))+ABS(RetainedValue(DV(J)*D0(Q))))
+            DO L=1,3
+              Geometry_Option%MomentumScale(J)=Geometry_Option%MomentumScale(J)+U(Q) &
+                *(ABS(RetainedValue(V(L)*DK(J,L)))+ABS(RetainedValue(DV(L)*K0(J,L))))
+            END DO
+            Geometry_Option%FrameEnergy=Geometry_Option%FrameEnergy &
+              +U(Q)*(DV(J)*I0(Q,J)-V(J)*DeltaKV)
+          END DO
+        END IF
+        IF( PRESENT(Response_Option) )THEN
+          Response_Option(:,1,Q)=F
+          Response_Option(2:4,2:4,Q)=KN
+        END IF
+      END DO
+      DO J=1,3
+        VelocityResidual(J)=DV(J)+QM(NF+1+J)+V(J)*ED+DV(J)*ED0
+        Scale=ABS(RetainedValue(DV(J)))+ABS(RetainedValue(QM(NF+1+J))) &
+                +ABS(RetainedValue(V(J)*ED))+ABS(RetainedValue(DV(J)*ED0))
+        Bound=MAX(128.0_DP*EPSILON(1.0_DP)**2*Scale,1.0e-300_DP)
+        IF( Move(J) ) Finished=Finished .AND. ABS(RetainedValue(VelocityResidual(J)))<=Bound
+      END DO
+      IF( Finished ) EXIT
       ! Two passes avoid an O(M) array of local 4x4 inverse/response matrices
       ! in each GPU thread. Only the small Schur system is retained.
       DO Pass=1,2
@@ -670,53 +1234,23 @@ CONTAINS
           IF( Pass==2 .AND. PRESENT(Response_Option) )THEN
             B4=Response_Option(:,:,Q)
           ELSE
-            D=RetainedValue(D0(Q)+X(Q))
-            IF( D<=TINY(1.0_DP) .OR. .NOT. IEEE_IS_FINITE(D) )THEN
-              Info=1000+Q
-              RETURN
-            END IF
             DO J=1,3
               DI(J)=X(J*M+Q)
-              IV(J)=RetainedValue(I0(Q,J)+DI(J))
             END DO
-            IF( PRESENT(Incoming_Option) )THEN
-              K0=Incoming_Option(Q)%Pressure
-              CALL ComputeCollisionPressureIncrement_OrderV_Point(D0(Q),I0(Q,:),X(Q),DI,DK,Incoming_Option(Q))
+            IF( PRESENT(Response_Option) )THEN
+              D=RetainedValue(D0(Q)+X(Q))
+              IV=RetainedValue(I0(Q,:)+DI)
+              F=Response_Option(:,1,Q)
+              KN=Response_Option(2:4,2:4,Q)
             ELSE
-              CALL ComputeCollisionPressure_OrderV_Point(Retain(D0(Q)),Retain(I0(Q,:)),K0)
-              CALL ComputeCollisionPressureIncrement_OrderV_Point(D0(Q),I0(Q,:),X(Q),DI,DK)
-            END IF
-            KN=K0+DK
-            CALL ComputeCollisionDensityIncrement_OrderV_Point(X(Q),DI,I0(Q,:),V,DV,DN,DVI)
-            F(1)=DN-P(Q,1)
-            DO J=1,3
-              F(J+1)=DI(J)-P(Q,J+1)
-              DO L=1,3
-                F(J+1)=F(J+1)+V(L)*DK(J,L)+DV(L)*K0(J,L)
-              END DO
-            END DO
-            IF( Pass==1 )THEN
-              ED=ED+U(Q)*X(Q)
-              Scale=ABS(RetainedValue(X(Q)))+ABS(RetainedValue(P(Q,1)))
-              DO J=1,3
-                Scale=Scale+ABS(RetainedValue(V(J)*DI(J)))+ABS(RetainedValue(DV(J)*I0(Q,J)))
-              END DO
-              Bound=MAX(128.0_DP*EPSILON(1.0_DP)**2*Scale,1.0e-300_DP)
-              Finished=Finished .AND. ABS(RetainedValue(F(1)))<=Bound
-              DO J=1,3
-                Scale=ABS(RetainedValue(DI(J)))+ABS(RetainedValue(P(Q,J+1)))
-                DO L=1,3
-                  Scale=Scale+ABS(RetainedValue(V(L)*DK(J,L)))+ABS(RetainedValue(DV(L)*K0(J,L)))
-                END DO
-                ! A nearly free-streaming pressure component can be tiny by
-                ! cancellation of O(D) tensor terms. Its rounding bound must
-                ! include the parent increment scale, not demand relative
-                ! retained accuracy of that vanishing tensor component.
-                Scale=Scale+SUM(ABS(VC))*(ABS(RetainedValue(X(Q)))+SUM(ABS(RetainedValue(DI)))) &
-                  +SUM(ABS(RetainedValue(DV)))*D0(Q)
-                Bound=MAX(128.0_DP*EPSILON(1.0_DP)**2*Scale,1.0e-300_DP)
-                Finished=Finished .AND. ABS(RetainedValue(F(J+1)))<=Bound
-              END DO
+              IF( PRESENT(Incoming_Option) )THEN
+                CALL ComputeSharedBinResidual(D0(Q),I0(Q,:),X(Q),DI,V,DV,P(Q,:), &
+                  KN,F,D,IV,Converged,Info,Incoming_Option(Q))
+              ELSE
+                CALL ComputeSharedBinResidual(D0(Q),I0(Q,:),X(Q),DI,V,DV,P(Q,:), &
+                  KN,F,D,IV,Converged,Info)
+              END IF
+              IF( Info/=0 ) RETURN
             END IF
             CALL ComputeCollisionClosureDerivatives_OrderV_Point(D,IV,KD,KI)
             A4=0.0_DP
@@ -756,11 +1290,6 @@ CONTAINS
         END DO
         IF( Pass==2 ) EXIT
         DO J=1,3
-          VelocityResidual(J)=DV(J)+QM(NF+1+J)+V(J)*ED+DV(J)*ED0
-          Scale=ABS(RetainedValue(DV(J)))+ABS(RetainedValue(QM(NF+1+J))) &
-                  +ABS(RetainedValue(V(J)*ED))+ABS(RetainedValue(DV(J)*ED0))
-          Bound=MAX(128.0_DP*EPSILON(1.0_DP)**2*Scale,1.0e-300_DP)
-          IF( Move(J) ) Finished=Finished .AND. ABS(RetainedValue(VelocityResidual(J)))<=Bound
           B3(J,1)=-VelocityResidual(J)-V(J)*SumR
           A3(J,:)=V(J)*SumB
           A3(J,J)=A3(J,J)+1.0_DP+ED0+ED
@@ -770,12 +1299,10 @@ CONTAINS
             B3(J,1)=0.0_DP
           END IF
         END DO
-        IF( Finished ) EXIT
         CALL SolveRetainedSmall(3,A3,B3,Info)
         IF( Info/=0 ) RETURN
         DVStep=B3(:,1)
       END DO
-      IF( Finished ) EXIT
       DV=DV+DVStep
     END DO
     Info=1
@@ -805,6 +1332,7 @@ CONTAINS
       END IF
     END DO
     X(N+SIZE(Active)+1:)=0.0_DP
+    IF( PRESENT(Geometry_Option) ) Geometry_Option%Valid=.TRUE.
     Info=0
   END SUBROUTINE RecoverSharedProcessState
 

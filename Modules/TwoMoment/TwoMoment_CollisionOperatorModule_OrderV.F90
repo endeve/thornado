@@ -1,10 +1,28 @@
 MODULE TwoMoment_CollisionOperatorModule_OrderV
 
   USE KindModule, ONLY: DP
-  USE TwoMoment_RetainedArithmeticModule
+  USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_IS_FINITE
+  USE TwoMoment_RetainedArithmeticModule, ONLY: RetainedReal
 
+  USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_FMA
   IMPLICIT NONE
   PRIVATE
+  INTERFACE ASSIGNMENT(=)
+    MODULE PROCEDURE AssignReal
+  END INTERFACE
+  INTERFACE OPERATOR(+)
+    MODULE PROCEDURE AddPair, AddReal, RealAdd
+  END INTERFACE
+  INTERFACE OPERATOR(-)
+    MODULE PROCEDURE SubtractPair, SubtractReal, RealSubtract, NegatePair
+  END INTERFACE
+  INTERFACE OPERATOR(*)
+    MODULE PROCEDURE MultiplyPair, MultiplyReal, RealMultiply
+  END INTERFACE
+  INTERFACE OPERATOR(/)
+    MODULE PROCEDURE DividePair, DivideReal, RealDivide
+  END INTERFACE
+
 
   PUBLIC :: BuildCollisionEvents_OrderV, ComputeCollisionPressure_OrderV_Point, ComputeCollisionPressureIncrement_OrderV_Point
   PUBLIC :: ComputeCollisionClosureDerivatives_OrderV_Point, ComputeEquilibriumTarget_OrderV_Point
@@ -18,9 +36,11 @@ MODULE TwoMoment_CollisionOperatorModule_OrderV
   PUBLIC :: RefineCollisionConservation_OrderV_Point
   PUBLIC :: ComputeCollisionDensityIncrement_OrderV_Point
   PUBLIC :: ComputeCollisionRateDirection_OrderV_Point
-  PUBLIC :: IncomingRadiationCache, PrepareIncomingRadiationCache
+  PUBLIC :: IncomingRadiationCache, PrepareIncomingRadiationCache, CollisionGeometryCache
+  PUBLIC :: CollisionFluxStrictlyInterior
   PUBLIC :: BuildSpectralBlocks
   PUBLIC :: PrepareSharedCollisionLinearSystem
+  PUBLIC :: ComputeCollisionConservationJacobian_OrderV_Point
 
   ! No pointers or allocatable components: one device-resident record per
   ! incoming spectral bin. Keep both words of every retained quantity.
@@ -29,7 +49,416 @@ MODULE TwoMoment_CollisionOperatorModule_OrderV
     TYPE(RetainedReal) :: Pressure(3,3), Number, NumberFrame(3), FluxFrame(3,3)
   END TYPE IncomingRadiationCache
 
+  TYPE :: CollisionGeometryCache
+    TYPE(RetainedReal) :: FrameEnergy
+    REAL(DP) :: MomentumScale(3)=0.0_DP
+    LOGICAL :: Valid=.FALSE.
+  END TYPE CollisionGeometryCache
+
 CONTAINS
+
+
+  ELEMENTAL SUBROUTINE AssignReal( A, B )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(out) :: A
+    REAL(DP), INTENT(in) :: B
+    A % High = B
+    A % Low = 0.0_DP
+  END SUBROUTINE AssignReal
+
+  ELEMENTAL FUNCTION Retain( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: A
+    REAL(DP), INTENT(in), OPTIONAL :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: X, Y, Z
+
+    IF( .NOT. PRESENT(B) )THEN
+      C % High = A+0.0_DP
+      C % Low = 0.0_DP
+      RETURN
+    END IF
+    Y = B
+    X = A + Y
+    Z = X - A
+    C % High = X
+    C % Low = ( A - ( X - Z ) ) + ( Y - Z )
+  END FUNCTION Retain
+
+  ELEMENTAL FUNCTION RetainedValue( A ) RESULT(B)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    REAL(DP) :: B
+    B = A % High + A % Low
+  END FUNCTION RetainedValue
+
+  ELEMENTAL FUNCTION AddPair( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A, B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: S, V, E
+    S = A % High + B % High
+    V = S - A % High
+    E = ( A % High - ( S - V ) ) + ( B % High - V )
+    C = Retain( S, ( E + A % Low ) + B % Low )
+  END FUNCTION AddPair
+
+  ELEMENTAL FUNCTION AddReal( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    REAL(DP), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: S, V, E
+    S = A % High+B
+    V = S-A % High
+    E = (A % High-(S-V))+(B-V)
+    C = Retain(S,E+A % Low)
+  END FUNCTION AddReal
+
+  ELEMENTAL FUNCTION RealAdd( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: A
+    TYPE(RetainedReal), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: S, V, E
+    S = A+B % High
+    V = S-A
+    E = (A-(S-V))+(B % High-V)
+    C = Retain(S,E+B % Low)
+  END FUNCTION RealAdd
+
+  ELEMENTAL FUNCTION NegatePair( A ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    TYPE(RetainedReal) :: C
+    C % High = -A % High
+    C % Low = -A % Low
+  END FUNCTION NegatePair
+
+  ELEMENTAL FUNCTION SubtractPair( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A, B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: S, V, E
+    S = A % High-B % High
+    V = S-A % High
+    E = (A % High-(S-V))-(B % High+V)
+    C = Retain(S,(E+A % Low)-B % Low)
+  END FUNCTION SubtractPair
+
+  ELEMENTAL FUNCTION SubtractReal( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    REAL(DP), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: S, V, E
+    S = A % High-B
+    V = S-A % High
+    E = (A % High-(S-V))-(B+V)
+    C = Retain(S,E+A % Low)
+  END FUNCTION SubtractReal
+
+  ELEMENTAL FUNCTION RealSubtract( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: A
+    TYPE(RetainedReal), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: S, V, E
+    S = A-B % High
+    V = S-A
+    E = (A-(S-V))-(B % High+V)
+    C = Retain(S,E-B % Low)
+  END FUNCTION RealSubtract
+
+  ELEMENTAL FUNCTION MultiplyPair( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A, B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: P,E
+    ! Match the checked prototype on CPUs. Explicit association is required;
+    ! compile this arithmetic without reassociation/unsafe fast-math.
+    P = A % High * B % High
+    E = IEEE_FMA(A % High,B % High,-P)
+    C = Retain( P, E + A % High * B % Low &
+                      + A % Low * B % High + A % Low * B % Low )
+  END FUNCTION MultiplyPair
+
+  ELEMENTAL FUNCTION MultiplyReal( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    REAL(DP), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: P,E
+    P = A % High*B
+    E = IEEE_FMA(A % High,B,-P)
+    C = Retain(P,E+A % Low*B)
+  END FUNCTION MultiplyReal
+
+  ELEMENTAL FUNCTION RealMultiply( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: A
+    TYPE(RetainedReal), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    REAL(DP) :: P,E
+    P = A*B % High
+    E = IEEE_FMA(A,B % High,-P)
+    C = Retain(P,E+A*B % Low)
+  END FUNCTION RealMultiply
+
+  ELEMENTAL FUNCTION DividePair( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A, B
+    TYPE(RetainedReal) :: C, R
+    REAL(DP) :: Q
+    Q = A % High / B % High
+    R = A - B * Q
+    C = Retain( Q, RetainedValue(R) / B % High )
+  END FUNCTION DividePair
+
+  ELEMENTAL FUNCTION DivideReal( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    REAL(DP), INTENT(in) :: B
+    TYPE(RetainedReal) :: C, R, P
+    REAL(DP) :: Q
+    Q = A % High/B
+    P = RetainedProduct(B,Q)
+    R = A-P
+    C = Retain(Q,RetainedValue(R)/B)
+  END FUNCTION DivideReal
+
+  ELEMENTAL FUNCTION RealDivide( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: A
+    TYPE(RetainedReal), INTENT(in) :: B
+    TYPE(RetainedReal) :: C
+    C = Retain(A) / B
+  END FUNCTION RealDivide
+
+  ELEMENTAL FUNCTION RetainedAbs( A ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    TYPE(RetainedReal) :: C
+    C = A
+    IF( A % High < 0.0_DP ) C = -A
+  END FUNCTION RetainedAbs
+
+  ELEMENTAL FUNCTION RetainedSqrt( A ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    TYPE(RetainedReal) :: C
+    INTEGER :: I
+    C = SQRT(MAX(0.0_DP,A % High))
+    IF( C % High == 0.0_DP ) RETURN
+    DO I = 1, 2
+      C = C + ( A - C * C ) / ( 2.0_DP * C )
+    END DO
+  END FUNCTION RetainedSqrt
+
+  ELEMENTAL FUNCTION RetainedExp( A ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    TYPE(RetainedReal) :: C, R
+    TYPE(RetainedReal), PARAMETER :: LnStep = RetainedReal(4.33216987849965804E-02_DP,1.44940425865393722E-18_DP)
+    TYPE(RetainedReal), PARAMETER :: Coefficient(0:13) = [ &
+      RetainedReal(1.00000000000000000E+00_DP,0.00000000000000000E+00_DP), &
+      RetainedReal(1.00000000000000000E+00_DP,0.00000000000000000E+00_DP), &
+      RetainedReal(5.00000000000000000E-01_DP,0.00000000000000000E+00_DP), &
+      RetainedReal(1.66666666666666657E-01_DP,9.25185853854297066E-18_DP), &
+      RetainedReal(4.16666666666666644E-02_DP,2.31296463463574266E-18_DP), &
+      RetainedReal(8.33333333333333322E-03_DP,1.15648231731787138E-19_DP), &
+      RetainedReal(1.38888888888888894E-03_DP,-5.30054395437357706E-20_DP), &
+      RetainedReal(1.98412698412698413E-04_DP,1.72095582934207053E-22_DP), &
+      RetainedReal(2.48015873015873016E-05_DP,2.15119478667758816E-23_DP), &
+      RetainedReal(2.75573192239858925E-06_DP,-1.85839327404647208E-22_DP), &
+      RetainedReal(2.75573192239858883E-07_DP,2.37677146222502973E-23_DP), &
+      RetainedReal(2.50521083854417202E-08_DP,-1.44881407093591197E-24_DP), &
+      RetainedReal(2.08767569878681002E-09_DP,-1.20734505911325997E-25_DP), &
+      RetainedReal(1.60590438368216133E-10_DP,1.25852945887520981E-26_DP) ]
+    TYPE(RetainedReal), PARAMETER :: FractionalPower(0:15) = [ &
+      RetainedReal(1.00000000000000000E+00_DP,0.00000000000000000E+00_DP), &
+      RetainedReal(1.04427378242741375E+00_DP,8.55188970553796489E-17_DP), &
+      RetainedReal(1.09050773266525769E+00_DP,-3.04678207981247115E-17_DP), &
+      RetainedReal(1.13878863475669156E+00_DP,8.91281267602540778E-17_DP), &
+      RetainedReal(1.18920711500272103E+00_DP,3.98201523146564611E-17_DP), &
+      RetainedReal(1.24185781207348400E+00_DP,4.65802759183693679E-17_DP), &
+      RetainedReal(1.29683955465100964E+00_DP,2.53825027948883150E-17_DP), &
+      RetainedReal(1.35425554693689265E+00_DP,7.70094837980298946E-17_DP), &
+      RetainedReal(1.41421356237309515E+00_DP,-9.66729331345291345E-17_DP), &
+      RetainedReal(1.47682614593949935E+00_DP,-3.48399455689279580E-17_DP), &
+      RetainedReal(1.54221082540794074E+00_DP,7.94983480969762086E-17_DP), &
+      RetainedReal(1.61049033194925428E+00_DP,2.47071925697978879E-17_DP), &
+      RetainedReal(1.68179283050742900E+00_DP,8.19901002058149652E-17_DP), &
+      RetainedReal(1.75625216037329945E+00_DP,2.96014069544887331E-17_DP), &
+      RetainedReal(1.83400808640934243E+00_DP,3.28310722424562720E-17_DP), &
+      RetainedReal(1.91520656139714740E+00_DP,-1.06199460561959626E-16_DP) ]
+    INTEGER :: I, N, J, Power
+
+    IF( A % High < -745.0_DP )THEN
+      C = 0.0_DP
+      RETURN
+    END IF
+    ! exp(A) = 2**Power * 2**(J/16) * exp(R), |R| <= log(2)/32.
+    ! The degree-13 Taylor remainder is below 5.87e-35.
+    N = NINT(A % High/LnStep % High)
+    J = MODULO(N,16)
+    Power = (N-J)/16
+    R = A-LnStep*REAL(N,DP)
+    C = Coefficient(13)
+    DO I = 12, 0, -1
+      C = Coefficient(I)+R*C
+    END DO
+    C = C*FractionalPower(J)
+    C % High = SCALE(C % High,Power)
+    C % Low = SCALE(C % Low,Power)
+  END FUNCTION RetainedExp
+
+  ELEMENTAL FUNCTION RetainedFermi( A ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: A
+    TYPE(RetainedReal) :: C, Tail
+    Tail = RetainedExp(-RetainedAbs(A))
+    IF( A % High >= 0.0_DP )THEN
+      C = Tail / ( 1.0_DP + Tail )
+    ELSE
+      C = 1.0_DP / ( 1.0_DP + Tail )
+    END IF
+  END FUNCTION RetainedFermi
+
+  PURE SUBROUTINE RetainedAccumulate( Sum, Term )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(inout) :: Sum
+    TYPE(RetainedReal), INTENT(in) :: Term
+    Sum = Sum + Term
+  END SUBROUTINE RetainedAccumulate
+
+  ELEMENTAL FUNCTION RetainedProduct( A, B ) RESULT(C)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: A, B
+    TYPE(RetainedReal) :: C
+    C % High = A*B
+    C % Low = IEEE_FMA(A,B,-C % High)
+  END FUNCTION RetainedProduct
+
+
+  PURE LOGICAL FUNCTION CollisionFluxStrictlyInterior(D,I) RESULT(Interior)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    TYPE(RetainedReal), INTENT(in) :: D,I(3)
+    REAL(DP) :: Lower,Upper,Ratio,Square,NormUpper
+    INTEGER :: J
+    Interior=.FALSE.
+    IF( .NOT. IEEE_IS_FINITE(D%High) .OR. .NOT. IEEE_IS_FINITE(D%Low) ) RETURN
+    IF( D%High<=0.0_DP .OR. ABS(D%Low)>=D%High ) RETURN
+    Lower=NEAREST(D%High-ABS(D%Low),-1.0_DP)
+    IF( Lower<16.0_DP*TINY(1.0_DP) .OR. Lower>HUGE(1.0_DP)/16.0_DP ) RETURN
+    NormUpper=0.0_DP
+    DO J=1,3
+      IF( .NOT. IEEE_IS_FINITE(I(J)%High) .OR. .NOT. IEEE_IS_FINITE(I(J)%Low) ) RETURN
+      IF( ABS(I(J)%High)>Lower .OR. ABS(I(J)%Low)>Lower ) RETURN
+      Upper=MAX(TINY(1.0_DP),NEAREST(ABS(I(J)%High)+ABS(I(J)%Low),1.0_DP))
+      IF( Upper>Lower ) RETURN
+      IF( Upper<SQRT(TINY(1.0_DP))*Lower )THEN
+        Square=TINY(1.0_DP)
+      ELSE
+        Ratio=NEAREST(Upper/Lower,1.0_DP)
+        Square=NEAREST(Ratio*Ratio,1.0_DP)
+      END IF
+      NormUpper=NEAREST(NormUpper+Square,1.0_DP)
+    END DO
+    Interior=NormUpper<1.0_DP
+  END FUNCTION CollisionFluxStrictlyInterior
 
   PURE SUBROUTINE PrepareSharedCollisionLinearSystem(M,NF,NA,Matrix,RHS)
 #if defined(THORNADO_OMP_OL)
@@ -269,6 +698,11 @@ CONTAINS
     TYPE(IncomingRadiationCache), INTENT(in), OPTIONAL :: Incoming_Option
     TYPE(RetainedReal) :: D, R02, R2, DR2, H0, DH, H, C0, C, DC, P0, DP0, Z0(3), Z(3), DZ(3), Tensor0
     INTEGER :: J, L
+    IF( D0>0.0_DP .AND. DD%High==0.0_DP .AND. DD%Low==0.0_DP &
+        .AND. ALL(DI%High==0.0_DP) .AND. ALL(DI%Low==0.0_DP) )THEN
+      DK=0.0_DP
+      RETURN
+    END IF
     D = D0 + DD
     IF( PRESENT(Incoming_Option) )THEN
       Z0=Incoming_Option%FluxFactor
@@ -357,10 +791,19 @@ CONTAINS
     INTEGER, INTENT(in) :: NE, NS, ND
     REAL(DP), INTENT(in) :: Energy(NE), Weight(ND), Interp(ND+2,ND), KT, Mu(NS)
     TYPE(RetainedReal), INTENT(out) :: Target(NE,NS)
-    INTEGER :: S, Q
+    INTEGER :: S, Q, Previous
     ! The active target is the thermodynamic Fermi--Dirac distribution.
     ! Do not restore a DG cap here during a naming/organization cleanup.
     DO S = 1, NS
+      Previous = 1
+      DO WHILE( Previous < S )
+        IF( Mu(Previous) == Mu(S) ) EXIT
+        Previous = Previous+1
+      END DO
+      IF( Previous < S )THEN
+        Target(:,S) = Target(:,Previous)
+        CYCLE
+      END IF
       DO Q = 1, NE
         Target(Q,S) = RetainedFermi((Retain(Energy(Q))-Mu(S))/KT)
       END DO
@@ -376,7 +819,7 @@ CONTAINS
     INTEGER, INTENT(in) :: M
     REAL(DP), INTENT(in) :: D0(M), I0(M,3), Cap
     TYPE(RetainedReal), INTENT(in) :: X(:)
-    TYPE(RetainedReal) :: D, R2, I, Slack
+    TYPE(RetainedReal) :: D, R2, I, Slack, Flux(3)
     INTEGER :: Q, J
     Valid = .FALSE.
     DO Q = 1, M
@@ -384,14 +827,15 @@ CONTAINS
       IF( D % High <= 0.0_DP ) RETURN
       Slack = Cap-D
       IF( Slack % High < -8.0_DP*EPSILON(1.0_DP) ) RETURN
+      DO J = 1, 3
+        Flux(J) = I0(Q,J)+X(J*M+Q)
+        Slack = (1.0_DP+64.0_DP*EPSILON(1.0_DP))*D-RetainedAbs(Flux(J))
+        IF( Slack % High < 0.0_DP ) RETURN
+      END DO
+      IF( CollisionFluxStrictlyInterior(D,Flux) ) CYCLE
       R2 = 0.0_DP
       DO J = 1, 3
-        I = I0(Q,J)+X(J*M+Q)
-        ! Reject an obviously invalid component before dividing by a tiny
-        ! density. An invalid trial must not overflow its own cone test.
-        Slack = (1.0_DP+64.0_DP*EPSILON(1.0_DP))*D-RetainedAbs(I)
-        IF( Slack % High < 0.0_DP ) RETURN
-        I = I/D
+        I = Flux(J)/D
         R2 = R2 + I*I
       END DO
       Slack = 1.0_DP-RetainedSqrt(R2)
@@ -402,7 +846,7 @@ CONTAINS
 
   PURE SUBROUTINE ComputeCollisionRates_OrderV_Point &
     ( M, NF, A, B, Kind, FamilyMoment, W, U, Gain, Loss, Chi, Sigma, Target, D, I, &
-      C0, C1, Source, AbsoluteSource, Kappa, DensityLoss, EnergyRatio_Option )
+      C0, C1, Source, AbsoluteSource, Kappa, DensityLoss, EnergyRatio_Option, NumberSource_Option,NonScatteringEnergy_Option,UsedWeighted_Option )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -414,16 +858,46 @@ CONTAINS
     TYPE(RetainedReal), INTENT(out) :: C0(M), C1(M,3), Source(NF+4), Kappa(M)
     REAL(DP), INTENT(out) :: AbsoluteSource(NF+4), DensityLoss(M)
     TYPE(RetainedReal), INTENT(in), OPTIONAL :: EnergyRatio_Option(M)
-    TYPE(RetainedReal) :: CC, Event, CA, CB, X, Y, Term, GPair, LPair, EM
+    TYPE(RetainedReal), INTENT(out), OPTIONAL :: NumberSource_Option(M),NonScatteringEnergy_Option
+    TYPE(RetainedReal) :: CC, Event, CA, CB, X, Y, HX, HY, Term, GPair, LPair, EM,Vacancy(M),GX,LX,RadiationA,RadiationB
+    LOGICAL,INTENT(out),OPTIONAL :: UsedWeighted_Option
+    REAL(DP) :: SpectralMagnitude(M),DampingMagnitude(M),SafeMinimum
+    INTEGER :: MaximumExponent,Gap
     INTEGER :: Q, S, F, J, L, IA, IB, NE
     REAL(DP) :: SignB
+    IF( PRESENT(UsedWeighted_Option) ) UsedWeighted_Option=.FALSE.
+    IF( SIZE(A)==0 .OR. ANY(W<=0.0_DP) )THEN
+      CALL ComputeCollisionRatesDirect_OrderV_Point(M,NF,A,B,Kind,FamilyMoment,W,U,Gain,Loss, &
+        Chi,Sigma,Target,D,I,C0,C1,Source,AbsoluteSource,Kappa,DensityLoss, &
+        EnergyRatio_Option,NumberSource_Option,NonScatteringEnergy_Option)
+      RETURN
+    END IF
+    Gap=CEILING(LOG(REAL(MAX(1,SIZE(A)),DP))/LOG(2.0_DP))+4
+    MaximumExponent=MINEXPONENT(1.0_DP)
+    DO L=1,SIZE(A)
+      IF( Gain(L)/=0.0_DP ) MaximumExponent=MAX(MaximumExponent,EXPONENT(ABS(Gain(L)))+EXPONENT(W(A(L))))
+      IF( Loss(L)/=0.0_DP ) MaximumExponent=MAX(MaximumExponent,EXPONENT(ABS(Loss(L)))+EXPONENT(W(A(L))))
+    END DO
+    IF( MaximumExponent+Gap+2*DIGITS(1.0_DP)>=MAXEXPONENT(1.0_DP) )THEN
+      CALL ComputeCollisionRatesDirect_OrderV_Point(M,NF,A,B,Kind,FamilyMoment,W,U,Gain,Loss, &
+        Chi,Sigma,Target,D,I,C0,C1,Source,AbsoluteSource,Kappa,DensityLoss, &
+        EnergyRatio_Option,NumberSource_Option,NonScatteringEnergy_Option)
+      RETURN
+    END IF
+    SpectralMagnitude=0.0_DP
+    DampingMagnitude=0.0_DP
+    SafeMinimum=SCALE(TINY(1.0_DP),2*DIGITS(1.0_DP)+Gap)
     NE = M/(2*NF)
     Source = 0.0_DP
+    IF( PRESENT(NonScatteringEnergy_Option) ) NonScatteringEnergy_Option=0.0_DP
     AbsoluteSource = 0.0_DP
     DO Q = 1, M
+      Vacancy(Q)=1.0_DP-D(Q)
       CC = Chi(Q)*(Target(Q)-D(Q))
-      C0(Q) = CC
-      Kappa(Q) = Chi(Q)+Sigma(Q)
+      C0(Q) = 0.0_DP
+      IF( PRESENT(NumberSource_Option) ) NumberSource_Option(Q)=CC
+      IF( PRESENT(NonScatteringEnergy_Option) ) NonScatteringEnergy_Option=NonScatteringEnergy_Option+U(Q)*CC
+      Kappa(Q) = 0.0_DP
       DensityLoss(Q) = Chi(Q)
       S = (Q-1)/NE+1
       F = (S+1)/2
@@ -435,28 +909,47 @@ CONTAINS
       AbsoluteSource(NF+1) = AbsoluteSource(NF+1)+ABS(RetainedValue(Term))
     END DO
     DO L = 1, SIZE(A)
+      IF( Gain(L)==0.0_DP .AND. Loss(L)==0.0_DP ) CYCLE
       IA = A(L)
       IB = B(L)
       X = D(IA)
       Y = D(IB)
+      HX=Vacancy(IA)
+      HY=Vacancy(IB)
       GPair = Retain(Gain(L))*W(IA)
       LPair = Retain(Loss(L))*W(IA)
       IF( Kind(L) == 0 )THEN
-        Event = GPair*Y*(1.0_DP-X)-LPair*X*(1.0_DP-Y)
-        CA = GPair*Y+LPair*(1.0_DP-Y)
-        CB = GPair*(1.0_DP-X)+LPair*X
+        GX = GPair*Y
+        LX = LPair*X
+        Event = GX*HX-LX*HY
+        CA = GX+LPair*HY
+        CB = GPair*HX+LX
         SignB = -1.0_DP
       ELSE
-        Event = GPair*(1.0_DP-X)*(1.0_DP-Y)-LPair*X*Y
-        CA = GPair*(1.0_DP-Y)+LPair*Y
-        CB = GPair*(1.0_DP-X)+LPair*X
+        GX = GPair*HX
+        LX = LPair*X
+        Event = GX*HY-LX*Y
+        CA = GPair*HY+LPair*Y
+        CB = GX+LX
         SignB = 1.0_DP
       END IF
       ! One retained event supplies BOTH radiation legs and allowed sources.
-      C0(IA) = C0(IA)+Event/W(IA)
-      C0(IB) = C0(IB)+SignB*Event/W(IB)
-      Kappa(IA) = Kappa(IA)+CA/W(IA)
-      Kappa(IB) = Kappa(IB)+CB/W(IB)
+      C0(IA) = C0(IA)+Event
+      C0(IB) = C0(IB)+SignB*Event
+      Kappa(IA) = Kappa(IA)+CA
+      Kappa(IB) = Kappa(IB)+CB
+      SpectralMagnitude(IA)=SpectralMagnitude(IA)+ABS(Event%High)+ABS(Event%Low)
+      SpectralMagnitude(IB)=SpectralMagnitude(IB)+ABS(Event%High)+ABS(Event%Low)
+      DampingMagnitude(IA)=DampingMagnitude(IA)+ABS(CA%High)+ABS(CA%Low)
+      DampingMagnitude(IB)=DampingMagnitude(IB)+ABS(CB%High)+ABS(CB%Low)
+      IF( PRESENT(NumberSource_Option) )THEN
+        IF( (IA-1)/NE/=(IB-1)/NE .OR. Kind(L)/=0 )THEN
+          RadiationA=Event/W(IA)
+          RadiationB=SignB*Event/W(IB)
+          NumberSource_Option(IA)=NumberSource_Option(IA)+RadiationA
+          NumberSource_Option(IB)=NumberSource_Option(IB)+RadiationB
+        END IF
+      END IF
       DensityLoss(IA) = DensityLoss(IA)+RetainedValue(CA)/W(IA)
       DensityLoss(IB) = DensityLoss(IB)+RetainedValue(CB)/W(IB)
       DO F = 1, NF
@@ -474,6 +967,132 @@ CONTAINS
         Term = EM*Event
         Source(NF+1) = Source(NF+1)+Term
         AbsoluteSource(NF+1) = AbsoluteSource(NF+1)+ABS(RetainedValue(Term))
+        IF( PRESENT(NonScatteringEnergy_Option) )THEN
+          IF( (IA-1)/NE/=(IB-1)/NE .OR. Kind(L)/=0 ) &
+            NonScatteringEnergy_Option=NonScatteringEnergy_Option+Term
+        END IF
+      END IF
+    END DO
+    IF( ANY(SpectralMagnitude>0.0_DP .AND. SpectralMagnitude<SafeMinimum) .OR. &
+        ANY(DampingMagnitude>0.0_DP .AND. DampingMagnitude<SafeMinimum) )THEN
+      CALL ComputeCollisionRatesDirect_OrderV_Point(M,NF,A,B,Kind,FamilyMoment,W,U,Gain,Loss, &
+        Chi,Sigma,Target,D,I,C0,C1,Source,AbsoluteSource,Kappa,DensityLoss, &
+        EnergyRatio_Option,NumberSource_Option,NonScatteringEnergy_Option)
+      RETURN
+    END IF
+    DO Q=1,M
+      C0(Q)=Chi(Q)*(Target(Q)-D(Q))+C0(Q)/W(Q)
+      Kappa(Q)=Retain(Chi(Q)+Sigma(Q))+Kappa(Q)/W(Q)
+    END DO
+    IF( PRESENT(UsedWeighted_Option) ) UsedWeighted_Option=.TRUE.
+    DO J = 1, 3
+    DO Q = 1, M
+      C1(Q,J) = -Kappa(Q)*I(Q,J)
+      Term = U(Q)*C1(Q,J)
+      Source(NF+1+J) = Source(NF+1+J)+Term
+      AbsoluteSource(NF+1+J) = AbsoluteSource(NF+1+J)+ABS(RetainedValue(Term))
+    END DO
+    END DO
+  END SUBROUTINE ComputeCollisionRates_OrderV_Point
+
+  PURE SUBROUTINE ComputeCollisionRatesDirect_OrderV_Point &
+    ( M, NF, A, B, Kind, FamilyMoment, W, U, Gain, Loss, Chi, Sigma, Target, D, I, &
+      C0, C1, Source, AbsoluteSource, Kappa, DensityLoss, EnergyRatio_Option, NumberSource_Option,NonScatteringEnergy_Option )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    INTEGER, INTENT(in) :: M, NF, A(:), B(:), Kind(:), FamilyMoment(:,:)
+    REAL(DP), INTENT(in) :: W(M), U(M), Gain(:), Loss(:), Chi(M), Sigma(M)
+    TYPE(RetainedReal), INTENT(in) :: Target(M), D(M), I(M,3)
+    TYPE(RetainedReal), INTENT(out) :: C0(M), C1(M,3), Source(NF+4), Kappa(M)
+    REAL(DP), INTENT(out) :: AbsoluteSource(NF+4), DensityLoss(M)
+    TYPE(RetainedReal), INTENT(in), OPTIONAL :: EnergyRatio_Option(M)
+    TYPE(RetainedReal), INTENT(out), OPTIONAL :: NumberSource_Option(M),NonScatteringEnergy_Option
+    TYPE(RetainedReal) :: CC, Event, CA, CB, X, Y, HX, HY, Term, GPair, LPair, EM,Vacancy(M),GX,LX,RadiationA,RadiationB
+    INTEGER :: Q, S, F, J, L, IA, IB, NE
+    REAL(DP) :: SignB
+    NE = M/(2*NF)
+    Source = 0.0_DP
+    IF( PRESENT(NonScatteringEnergy_Option) ) NonScatteringEnergy_Option=0.0_DP
+    AbsoluteSource = 0.0_DP
+    DO Q = 1, M
+      Vacancy(Q)=1.0_DP-D(Q)
+      CC = Chi(Q)*(Target(Q)-D(Q))
+      C0(Q) = CC
+      IF( PRESENT(NumberSource_Option) ) NumberSource_Option(Q)=CC
+      IF( PRESENT(NonScatteringEnergy_Option) ) NonScatteringEnergy_Option=NonScatteringEnergy_Option+U(Q)*CC
+      Kappa(Q) = Chi(Q)+Sigma(Q)
+      DensityLoss(Q) = Chi(Q)
+      S = (Q-1)/NE+1
+      F = (S+1)/2
+      Term = W(Q)*MERGE(1.0_DP,-1.0_DP,MOD(S,2)==1)*CC
+      Source(F) = Source(F)+Term
+      AbsoluteSource(F) = AbsoluteSource(F)+ABS(RetainedValue(Term))
+      Term = U(Q)*CC
+      Source(NF+1) = Source(NF+1)+Term
+      AbsoluteSource(NF+1) = AbsoluteSource(NF+1)+ABS(RetainedValue(Term))
+    END DO
+    DO L = 1, SIZE(A)
+      IF( Gain(L)==0.0_DP .AND. Loss(L)==0.0_DP ) CYCLE
+      IA = A(L)
+      IB = B(L)
+      X = D(IA)
+      Y = D(IB)
+      HX=Vacancy(IA)
+      HY=Vacancy(IB)
+      GPair = Retain(Gain(L))*W(IA)
+      LPair = Retain(Loss(L))*W(IA)
+      IF( Kind(L) == 0 )THEN
+        GX = GPair*Y
+        LX = LPair*X
+        Event = GX*HX-LX*HY
+        CA = GX+LPair*HY
+        CB = GPair*HX+LX
+        SignB = -1.0_DP
+      ELSE
+        GX = GPair*HX
+        LX = LPair*X
+        Event = GX*HY-LX*Y
+        CA = GPair*HY+LPair*Y
+        CB = GX+LX
+        SignB = 1.0_DP
+      END IF
+      ! One retained event supplies BOTH radiation legs and allowed sources.
+      RadiationA=Event/W(IA)
+      RadiationB=SignB*Event/W(IB)
+      C0(IA) = C0(IA)+RadiationA
+      C0(IB) = C0(IB)+RadiationB
+      Kappa(IA) = Kappa(IA)+CA/W(IA)
+      Kappa(IB) = Kappa(IB)+CB/W(IB)
+      IF( PRESENT(NumberSource_Option) )THEN
+        IF( (IA-1)/NE/=(IB-1)/NE .OR. Kind(L)/=0 )THEN
+          NumberSource_Option(IA)=NumberSource_Option(IA)+RadiationA
+          NumberSource_Option(IB)=NumberSource_Option(IB)+RadiationB
+        END IF
+      END IF
+      DensityLoss(IA) = DensityLoss(IA)+RetainedValue(CA)/W(IA)
+      DensityLoss(IB) = DensityLoss(IB)+RetainedValue(CB)/W(IB)
+      DO F = 1, NF
+        IF( FamilyMoment(F,L) == 0 ) CYCLE
+        Term = REAL(FamilyMoment(F,L),DP)*Event
+        Source(F) = Source(F)+Term
+        AbsoluteSource(F) = AbsoluteSource(F)+ABS(RetainedValue(Term))
+      END DO
+      IF( PRESENT(EnergyRatio_Option) )THEN
+        EM = EnergyRatio_Option(IA)+SignB*EnergyRatio_Option(IB)
+      ELSE
+        EM = Retain(U(IA))/W(IA)+SignB*(Retain(U(IB))/W(IB))
+      END IF
+      IF( EM%High /= 0.0_DP .OR. EM%Low /= 0.0_DP )THEN
+        Term = EM*Event
+        Source(NF+1) = Source(NF+1)+Term
+        AbsoluteSource(NF+1) = AbsoluteSource(NF+1)+ABS(RetainedValue(Term))
+        IF( PRESENT(NonScatteringEnergy_Option) )THEN
+          IF( (IA-1)/NE/=(IB-1)/NE .OR. Kind(L)/=0 ) &
+            NonScatteringEnergy_Option=NonScatteringEnergy_Option+Term
+        END IF
       END IF
     END DO
     DO J = 1, 3
@@ -484,7 +1103,7 @@ CONTAINS
       AbsoluteSource(NF+1+J) = AbsoluteSource(NF+1+J)+ABS(RetainedValue(Term))
     END DO
     END DO
-  END SUBROUTINE ComputeCollisionRates_OrderV_Point
+  END SUBROUTINE ComputeCollisionRatesDirect_OrderV_Point
 
   PURE SUBROUTINE ComputeCollisionRateDirection_OrderV_Point &
     ( M, NF, A, B, Kind, FamilyMoment, W, U, Gain, Loss, Chi, Sigma, Target, D, I, &
@@ -507,13 +1126,14 @@ CONTAINS
     TYPE(RetainedReal), INTENT(out), OPTIONAL :: NumberSource_Option(M)
     TYPE(RetainedReal), INTENT(out), OPTIONAL :: NonScatteringEnergy_Option
     TYPE(RetainedReal), INTENT(in), OPTIONAL :: EnergyRatio_Option(M)
-    TYPE(RetainedReal) :: Event, X, Y, DX, DY, G, L, DG, DL, Term, Kappa(M), DKappa(M), EM
+    TYPE(RetainedReal) :: Event, X, Y, HX, HY, DX, DY, G, L, DG, DL, Term, Kappa(M), DKappa(M), EM,Vacancy(M),GX,LX,CA,CB,RadiationA,RadiationB
     REAL(DP) :: SignB
     INTEGER :: Q, J, F, S, NE, E, IA, IB
     NE = M/(2*NF)
     Source = 0.0_DP
     IF( PRESENT(NonScatteringEnergy_Option) ) NonScatteringEnergy_Option=0.0_DP
     DO Q = 1, M
+      Vacancy(Q)=1.0_DP-D(Q)
       Term = Chi(Q)*(Target(Q)-D(Q)) &
                + DChi(Q)*(Target(Q)-D(Q)) + Chi(Q)*(DTarget(Q)-DD(Q))
       C0(Q) = Term
@@ -528,10 +1148,15 @@ CONTAINS
         NonScatteringEnergy_Option=NonScatteringEnergy_Option+U(Q)*Term
     END DO
     DO E = 1, SIZE(A)
+      IF( Gain(E)==0.0_DP .AND. Loss(E)==0.0_DP )THEN
+        IF( ALL(DGain(E,:)==0.0_DP) .AND. ALL(DLoss(E,:)==0.0_DP) ) CYCLE
+      END IF
       IA = A(E)
       IB = B(E)
       X = D(IA)
       Y = D(IB)
+      HX=Vacancy(IA)
+      HY=Vacancy(IB)
       DX = DD(IA)
       DY = DD(IB)
       G = Retain(Gain(E))*W(IA)
@@ -545,30 +1170,43 @@ CONTAINS
       DG = DG*W(IA)
       DL = DL*W(IA)
       IF( Kind(E) == 0 )THEN
-        Event = G*Y*(1.0_DP-X)-L*X*(1.0_DP-Y) &
-          + DG*Y*(1.0_DP-X)-DL*X*(1.0_DP-Y) &
-          + (G*(1.0_DP-X)+L*X)*DY-(G*Y+L*(1.0_DP-Y))*DX
+        GX = G*Y
+        LX = L*X
+        CA = GX+L*HY
+        CB = G*HX+LX
+        Event = GX*HX-LX*HY
+        GX = DG*Y
+        LX = DL*X
+        Event = Event+GX*HX-LX*HY+CB*DY-CA*DX
         SignB = -1.0_DP
-        Kappa(IA) = Kappa(IA)+(G*Y+L*(1.0_DP-Y))/W(IA)
-        DKappa(IA) = DKappa(IA)+(DG*Y+DL*(1.0_DP-Y)+(G-L)*DY)/W(IA)
+        Kappa(IA) = Kappa(IA)+CA/W(IA)
+        DKappa(IA) = DKappa(IA)+(GX+DL*HY+(G-L)*DY)/W(IA)
+        DKappa(IB) = DKappa(IB)+(DG*HX+LX+(L-G)*DX)/W(IB)
       ELSE
-        Event = G*(1.0_DP-X)*(1.0_DP-Y)-L*X*Y &
-          + DG*(1.0_DP-X)*(1.0_DP-Y)-DL*X*Y &
-          - (G*(1.0_DP-Y)+L*Y)*DX-(G*(1.0_DP-X)+L*X)*DY
+        GX = G*HX
+        LX = L*X
+        CA = G*HY+L*Y
+        CB = GX+LX
+        Event = GX*HY-LX*Y
+        GX = DG*HX
+        LX = DL*X
+        Event = Event+GX*HY-LX*Y-CA*DX-CB*DY
         SignB = 1.0_DP
-        Kappa(IA) = Kappa(IA)+(G*(1.0_DP-Y)+L*Y)/W(IA)
-        DKappa(IA) = DKappa(IA)+(DG*(1.0_DP-Y)+DL*Y+(L-G)*DY)/W(IA)
+        Kappa(IA) = Kappa(IA)+CA/W(IA)
+        DKappa(IA) = DKappa(IA)+(DG*HY+DL*Y+(L-G)*DY)/W(IA)
+        DKappa(IB) = DKappa(IB)+(GX+LX+(L-G)*DX)/W(IB)
       END IF
-      Kappa(IB) = Kappa(IB)+(G*(1.0_DP-X)+L*X)/W(IB)
-      DKappa(IB) = DKappa(IB)+(DG*(1.0_DP-X)+DL*X+(L-G)*DX)/W(IB)
-      C0(IA) = C0(IA)+Event/W(IA)
-      C0(IB) = C0(IB)+SignB*Event/W(IB)
+      Kappa(IB) = Kappa(IB)+CB/W(IB)
+      RadiationA=Event/W(IA)
+      RadiationB=SignB*Event/W(IB)
+      C0(IA) = C0(IA)+RadiationA
+      C0(IB) = C0(IB)+RadiationB
       IF( PRESENT(NumberSource_Option) )THEN
         ! Same-species scattering has zero number source in every connected
         ! spectral component. Preserve this before materializing its two legs.
         IF( (IA-1)/NE/=(IB-1)/NE .OR. Kind(E)/=0 )THEN
-          NumberSource_Option(IA)=NumberSource_Option(IA)+Event/W(IA)
-          NumberSource_Option(IB)=NumberSource_Option(IB)+SignB*Event/W(IB)
+          NumberSource_Option(IA)=NumberSource_Option(IA)+RadiationA
+          NumberSource_Option(IB)=NumberSource_Option(IB)+RadiationB
         END IF
       END IF
       DO F = 1, NF
@@ -689,6 +1327,7 @@ CONTAINS
       CN(Offset(Q)+Row(Q),Col(Q))=-Chi(Q)
     END DO
     DO L=1,SIZE(A)
+      IF( Gain(L)==0.0_DP .AND. Loss(L)==0.0_DP ) CYCLE
       IA=A(L)
       IB=B(L)
       G=Gain(L)*W(IA)
@@ -730,7 +1369,7 @@ CONTAINS
     REAL(DP), INTENT(out) :: ThermC(M,4,3),ThermS(NF+4,3)
     ! Caller-owned device scratch, reused later by candidate evaluation.
     TYPE(RetainedReal), INTENT(out) :: C0Work(M,3),KappaWork(M,3)
-    TYPE(RetainedReal) :: TS(NF+4,3),X,Y,HX,HY,GP,LP,Event,CA,CB,Term,EMR,C1
+    TYPE(RetainedReal) :: TS(NF+4,3),X,Y,HX,HY,GP,LP,Event,CA,CB,Term,EMR,C1,Vacancy(M),GX,LX
     REAL(DP) :: DA,DB,SignB,EM,G,L0
     INTEGER :: Q,S,F,NE,L,IA,IB,J,H,Row(M),Offset(M),Col(M)
     Row=[(Q,Q=1,M)]
@@ -752,6 +1391,7 @@ CONTAINS
     KappaWork=0.0_DP
     NE=M/(2*NF)
     DO Q=1,M
+      Vacancy(Q)=1.0_DP-D(Q)
       CN(Offset(Q)+Row(Q),Col(Q))=-Chi(Q)
       S=(Q-1)/NE+1
       F=(S+1)/2
@@ -767,12 +1407,15 @@ CONTAINS
       END DO
     END DO
     DO L=1,SIZE(A)
+      IF( Gain(L)==0.0_DP .AND. Loss(L)==0.0_DP )THEN
+        IF( ALL(DGain(L,:)==0.0_DP) .AND. ALL(DLoss(L,:)==0.0_DP) ) CYCLE
+      END IF
       IA=A(L)
       IB=B(L)
       X=D(IA)
       Y=D(IB)
-      HX=1.0_DP-X
-      HY=1.0_DP-Y
+      HX=Vacancy(IA)
+      HY=Vacancy(IB)
       G=Gain(L)*W(IA)
       L0=Loss(L)*W(IA)
       IF( Kind(L)==0 )THEN
@@ -811,16 +1454,21 @@ CONTAINS
       END IF
       DO H=1,3
         IF( .NOT. ThermalNeeded(H) ) CYCLE
+        IF( DGain(L,H)==0.0_DP .AND. DLoss(L,H)==0.0_DP ) CYCLE
         GP=Retain(DGain(L,H))*W(IA)
         LP=Retain(DLoss(L,H))*W(IA)
         IF( Kind(L)==0 )THEN
-          Event=GP*Y*HX-LP*X*HY
-          CA=GP*Y+LP*HY
-          CB=GP*HX+LP*X
+          GX=GP*Y
+          LX=LP*X
+          Event=GX*HX-LX*HY
+          CA=GX+LP*HY
+          CB=GP*HX+LX
         ELSE
-          Event=GP*HX*HY-LP*X*Y
+          GX=GP*HX
+          LX=LP*X
+          Event=GX*HY-LX*Y
           CA=GP*HY+LP*Y
-          CB=GP*HX+LP*X
+          CB=GX+LX
         END IF
         C0Work(IA,H)=C0Work(IA,H)+Event/W(IA)
         C0Work(IB,H)=C0Work(IB,H)+SignB*Event/W(IB)
@@ -841,9 +1489,11 @@ CONTAINS
         ELSE
           SI(NF+1+J,(J-1)*M+Q)=-U(Q)*Kappa(Q)
         END IF
-        DO L=1,M
-          SD(NF+1+J,L)=SD(NF+1+J,L)-U(Q)*IDP(Q,J)*SpectralEntry(KD,Q,L,SpectralRows_Option)
-        END DO
+        IF( SIZE(A)>0 )THEN
+          DO L=1,M
+            SD(NF+1+J,L)=SD(NF+1+J,L)-U(Q)*IDP(Q,J)*SpectralEntry(KD,Q,L,SpectralRows_Option)
+          END DO
+        END IF
       END DO
     END DO
     DO H=1,3
@@ -895,7 +1545,7 @@ CONTAINS
       R, Physical, HScale, GScale, AbsoluteSource, NativeIncrement, &
       NativeResidual_Option, TransferResidual_Option, Exchange_Option, &
       CollisionIncrement_Option, CollisionMoment_Option, Incoming_Option, &
-      LiftRows_Option)
+      LiftRows_Option, Geometry_Option)
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -913,12 +1563,14 @@ CONTAINS
     TYPE(RetainedReal), INTENT(out), OPTIONAL :: Exchange_Option(NF+4)
     TYPE(RetainedReal), INTENT(in), OPTIONAL :: CollisionIncrement_Option(M,4), CollisionMoment_Option(NF+4)
     TYPE(IncomingRadiationCache), INTENT(in), OPTIONAL :: Incoming_Option(M)
+    TYPE(CollisionGeometryCache), INTENT(in), OPTIONAL :: Geometry_Option
     TYPE(RetainedReal) :: T(NF+4), DV(3), V(3), DI(3), DK(3,3), K0(3,3)
     TYPE(RetainedReal) :: Moment(NF+4), Frame(NF+4), Source(NF+4), Lambda(NF+4)
     TYPE(RetainedReal) :: SharedMoment(NF+4)
     TYPE(RetainedReal) :: DeltaI, DeltaKV, DeltaVI, DN, Term, Sum, Lift, VDotL, V2
     INTEGER :: K, NA, Q, S, F, J, L, N
     REAL(DP) :: G
+    LOGICAL :: UseGeometry
     K = NF+4
     NA = SIZE(Active)
     N = 4*M
@@ -933,16 +1585,26 @@ CONTAINS
     IF( PRESENT(CollisionMoment_Option) ) SharedMoment = CollisionMoment_Option
     Frame = 0.0_DP
     HScale = 0.0_DP
+    UseGeometry=.FALSE.
+    IF( PRESENT(Geometry_Option) )THEN
+      UseGeometry=Geometry_Option%Valid .AND. PRESENT(CollisionIncrement_Option) .AND. PRESENT(CollisionMoment_Option)
+      IF( UseGeometry )THEN
+        Frame(NF+1)=Geometry_Option%FrameEnergy
+        HScale(NF+2:K)=Geometry_Option%MomentumScale
+      END IF
+    END IF
     DO Q = 1, M
       DO J = 1, 3
         DI(J) = X(J*M+Q)
       END DO
+      IF( .NOT. UseGeometry )THEN
       IF( PRESENT(Incoming_Option) )THEN
         K0=Incoming_Option(Q)%Pressure
         CALL ComputeCollisionPressureIncrement_OrderV_Point(D0(Q),I0(Q,:),X(Q),DI,DK,Incoming_Option(Q))
       ELSE
         CALL ComputeCollisionPressure_OrderV_Point(Retain(D0(Q)),Retain(I0(Q,:)),K0)
         CALL ComputeCollisionPressureIncrement_OrderV_Point(D0(Q),I0(Q,:),X(Q),DI,DK)
+      END IF
       END IF
       CALL ComputeCollisionDensityIncrement_OrderV_Point(X(Q),DI,I0(Q,:),V,DV,DN,DeltaVI)
       NativeIncrement(Q,1) = DN
@@ -962,6 +1624,7 @@ CONTAINS
           *(ABS(RetainedValue(V(J)*DI(J)))+ABS(RetainedValue(DV(J)*I0(Q,J))))
       END DO
       DO J = 1, 3
+        IF( .NOT. UseGeometry )THEN
         DeltaKV = 0.0_DP
         DO L = 1, 3
           DeltaKV = DeltaKV+V(L)*DK(J,L)+DV(L)*K0(J,L)
@@ -969,8 +1632,10 @@ CONTAINS
         NativeIncrement(Q,J+1) = DI(J)+DeltaKV
         Term = DI(J)+V(J)*X(Q)+DV(J)*D0(Q)+DeltaKV
         Moment(NF+1+J) = Moment(NF+1+J)+U(Q)*Term
+        END IF
         IF( PRESENT(CollisionMoment_Option) ) &
           SharedMoment(NF+1+J) = SharedMoment(NF+1+J)+U(Q)*(V(J)*X(Q)+DV(J)*D0(Q))
+        IF( .NOT. UseGeometry )THEN
         HScale(NF+1+J) = HScale(NF+1+J)+U(Q) &
           *(ABS(RetainedValue(DI(J)))+ABS(RetainedValue(V(J)*X(Q)))+ABS(RetainedValue(DV(J)*D0(Q))))
         DO L = 1, 3
@@ -978,6 +1643,7 @@ CONTAINS
             *(ABS(RetainedValue(V(L)*DK(J,L)))+ABS(RetainedValue(DV(L)*K0(J,L))))
         END DO
         Frame(NF+1) = Frame(NF+1)+U(Q)*(DV(J)*I0(Q,J)-V(J)*DeltaKV)
+        END IF
         Frame(NF+1+J) = Frame(NF+1+J)+U(Q)*(DV(J)*D0(Q)-V(J)*DeltaVI)
       END DO
       IF( PRESENT(CollisionIncrement_Option) )THEN
@@ -1071,7 +1737,7 @@ CONTAINS
   PURE SUBROUTINE ComputeCollisionColumn_OrderV_Point &
     ( M, NF, Active, W, U, D0, I0, V0, X, Z0, DT, Source0, &
       DD, DI, TC, LC, RC0, RC1, SC0, IncludeLiftDerivative, Column, Closure_Option, &
-      LiftRows_Option)
+      LiftRows_Option, Incoming_Option,AngularRowsOnly_Option)
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -1086,13 +1752,18 @@ CONTAINS
     LOGICAL, INTENT(in) :: IncludeLiftDerivative
     REAL(DP), INTENT(out) :: Column(:)
     REAL(DP), INTENT(in), OPTIONAL :: Closure_Option(3,3,4,M)
+    TYPE(IncomingRadiationCache), INTENT(in), OPTIONAL :: Incoming_Option(M)
     REAL(DP) :: T(NF+4), V(3), DV(3), VC(3), D, I(3), K0(3,3), KNow(3,3)
     REAL(DP) :: KD(3,3), KI(3,3,3), KC(3,3), KV(3), KVC(3), VI, VIC, DN
     REAL(DP) :: Moment(NF+4), Frame(NF+4), SC(NF+4), Lambda(NF+4), L0(NF+4)
     REAL(DP) :: LDot, LE, LEC, V2, Moved, G, DN0
     TYPE(RetainedReal) :: KP(3,3), DKP(3,3), DIC(3)
     INTEGER :: N, K, NA, Q, J, L, A, S, F
-    LOGICAL :: MovingFrame
+    LOGICAL, INTENT(in), OPTIONAL :: AngularRowsOnly_Option
+    LOGICAL :: MovingFrame,AngularRowsOnly,IncomingState
+    AngularRowsOnly=.FALSE.
+    IF( PRESENT(AngularRowsOnly_Option) ) AngularRowsOnly=AngularRowsOnly_Option
+    Column=0.0_DP
     N = 4*M
     K = NF+4
     NA = SIZE(Active)
@@ -1112,6 +1783,8 @@ CONTAINS
         I(J) = RetainedValue(I0(Q,J)+X(J*M+Q))
         DIC(J) = X(J*M+Q)
       END DO
+      IncomingState=X(Q)%High==0.0_DP .AND. X(Q)%Low==0.0_DP &
+        .AND. ALL(DIC%High==0.0_DP) .AND. ALL(DIC%Low==0.0_DP)
       KC = 0.0_DP
       IF( DD(Q) /= 0.0_DP .OR. ANY(DI(Q,:) /= 0.0_DP) )THEN
         IF( PRESENT(Closure_Option) )THEN
@@ -1132,11 +1805,20 @@ CONTAINS
       VIC = SUM(V*DI(Q,:))+SUM(VC*I)
       ! Retained pressure increments are needed only for a frame-changing
       ! column. Radiation/thermal columns otherwise use closure derivatives.
-      IF( MovingFrame )THEN
-        CALL ComputeCollisionPressure_OrderV_Point(Retain(D0(Q)),Retain(I0(Q,:)),KP)
-        K0 = RetainedValue(KP)
-        CALL ComputeCollisionPressureIncrement_OrderV_Point(D0(Q),I0(Q,:),X(Q),DIC,DKP)
-        CALL ComputeCollisionPressure_OrderV_Point(Retain(D),Retain(I),KP)
+      IF( MovingFrame .AND. .NOT. AngularRowsOnly )THEN
+        IF( PRESENT(Incoming_Option) )THEN
+          K0=RetainedValue(Incoming_Option(Q)%Pressure)
+          CALL ComputeCollisionPressureIncrement_OrderV_Point(D0(Q),I0(Q,:),X(Q),DIC,DKP,Incoming_Option(Q))
+        ELSE
+          CALL ComputeCollisionPressure_OrderV_Point(Retain(D0(Q)),Retain(I0(Q,:)),KP)
+          K0 = RetainedValue(KP)
+          CALL ComputeCollisionPressureIncrement_OrderV_Point(D0(Q),I0(Q,:),X(Q),DIC,DKP)
+        END IF
+        IF( PRESENT(Incoming_Option) .AND. IncomingState )THEN
+          KP=Incoming_Option(Q)%Pressure
+        ELSE
+          CALL ComputeCollisionPressure_OrderV_Point(Retain(D),Retain(I),KP)
+        END IF
         KNow = RetainedValue(KP)
         KV = MATMUL(RetainedValue(DKP),V)+MATMUL(K0,DV)
         KVC = KVC+MATMUL(KNow,VC)
@@ -1144,6 +1826,15 @@ CONTAINS
           VI = VI+V(J)*RetainedValue(DIC(J))+DV(J)*I0(Q,J)
         END DO
       END IF
+      IF( MovingFrame .AND. AngularRowsOnly )THEN
+        IF( PRESENT(Incoming_Option) .AND. IncomingState )THEN
+          KP=Incoming_Option(Q)%Pressure
+        ELSE
+          CALL ComputeCollisionPressure_OrderV_Point(Retain(D),Retain(I),KP)
+        END IF
+        KVC=KVC+MATMUL(RetainedValue(KP),VC)
+      END IF
+      IF( .NOT. AngularRowsOnly )THEN
       S = (Q-1)/(M/(2*NF))+1
       F = (S+1)/2
       G = MERGE(1.0_DP,-1.0_DP,MOD(S,2)==1)
@@ -1153,10 +1844,12 @@ CONTAINS
       Frame(NF+1) = Frame(NF+1)+U(Q)*(SUM(VC*I0(Q,:))-SUM(VC*KV)-SUM(V*KVC))
       Frame(NF+2:K) = Frame(NF+2:K)+U(Q)*(VC*D0(Q)-VC*VI-V*VIC)
       Column(Q) = DN-DT*RC0(Q)
+      END IF
       DO J = 1, 3
         Column(J*M+Q) = DI(Q,J)+KVC(J)-DT*RC1(Q,J)
       END DO
     END DO
+    IF( .NOT. AngularRowsOnly )THEN
     SC = SC0
     SC(NF+1) = SC0(NF+1)+SUM(V*SC0(NF+2:K))+SUM(VC*Source0(NF+2:K))
     SC(NF+2:K) = SC0(NF+2:K)+V*SC0(NF+1)+VC*Source0(NF+1)
@@ -1165,6 +1858,7 @@ CONTAINS
       L = Active(J)
       Column(N+K+J) = TC(L)-DT*SC(L)-Frame(L)
     END DO
+    END IF
     Lambda = LC
     V2 = SUM(V*V)
     IF( IncludeLiftDerivative )THEN
@@ -1184,10 +1878,77 @@ CONTAINS
     END IF
   END SUBROUTINE ComputeCollisionColumn_OrderV_Point
 
+  PURE SUBROUTINE ComputeCollisionConservationJacobian_OrderV_Point &
+    ( M, NF, Active, W, U, D0, I0, V0, X, Jacobian )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    INTEGER, INTENT(in) :: M,NF,Active(:)
+    REAL(DP), INTENT(in) :: W(M),U(M),D0(M),I0(M,3),V0(3)
+    TYPE(RetainedReal), INTENT(in) :: X(:)
+    REAL(DP), INTENT(out) :: Jacobian(NF+4,4*M+SIZE(Active))
+    REAL(DP) :: V(3),VC(3),D,I(3),KD(3,3),KI(3,3,3),KC(3,3),KN(3,3),KVC(3)
+    REAL(DP) :: DD,DI(3),DN,VIC,G
+    TYPE(RetainedReal) :: Pressure(3,3)
+    INTEGER :: Q,J,L,A,F,S,Column,N,K
+
+    N=4*M
+    K=NF+4
+    V=ComputeCollisionVelocity_OrderV_Point(M,NF,Active,V0,X)
+    Jacobian=0.0_DP
+    DO Q=1,M
+      D=RetainedValue(D0(Q)+X(Q))
+      DO J=1,3
+        I(J)=RetainedValue(I0(Q,J)+X(J*M+Q))
+      END DO
+      CALL ComputeCollisionClosureDerivatives_OrderV_Point(D,I,KD,KI)
+      CALL ComputeCollisionPressure_OrderV_Point(Retain(D),Retain(I),Pressure)
+      KN=RetainedValue(Pressure)
+      S=(Q-1)/(M/(2*NF))+1
+      F=(S+1)/2
+      G=MERGE(1.0_DP,-1.0_DP,MOD(S,2)==1)
+      DO L=0,3
+        DD=0.0_DP
+        DI=0.0_DP
+        IF( L==0 )THEN
+          DD=1.0_DP
+        ELSE
+          DI(L)=1.0_DP
+        END IF
+        KC=KD*DD
+        DO A=1,3
+          KC=KC+KI(:,:,A)*DI(A)
+        END DO
+        VIC=SUM(V*DI)
+        DN=DD+VIC
+        KVC=MATMUL(KC,V)
+        Column=L*M+Q
+        Jacobian(F,Column)=G*W(Q)*DN
+        Jacobian(NF+1,Column)=U(Q)*(DD+2.0_DP*VIC)
+        Jacobian(NF+2:K,Column)=U(Q)*(DI+V*DD+KVC)
+      END DO
+      DO J=1,SIZE(Active)
+        VC=0.0_DP
+        L=Active(J)-NF-1
+        IF( L>=1 .AND. L<=3 ) VC(L)=-1.0_DP
+        VIC=SUM(VC*I)
+        KVC=MATMUL(KN,VC)
+        Jacobian(F,N+J)=Jacobian(F,N+J)+G*W(Q)*VIC
+        Jacobian(NF+1,N+J)=Jacobian(NF+1,N+J)+U(Q)*(2.0_DP*VIC)
+        Jacobian(NF+2:K,N+J)=Jacobian(NF+2:K,N+J)+U(Q)*(VC*D+KVC)
+      END DO
+    END DO
+    DO J=1,SIZE(Active)
+      Jacobian(Active(J),N+J)=Jacobian(Active(J),N+J)-1.0_DP
+    END DO
+  END SUBROUTINE ComputeCollisionConservationJacobian_OrderV_Point
+
   PURE SUBROUTINE ComputeCollisionLinearColumn_OrderV_Point &
     ( M, NF, Active, W, U, D0, I0, V0, X, Z0, DT, Source, Kappa, CN, KD, SD, SI, &
       ThermC, ThermS, Field, IncludeLift, Column, Closure_Option, &
-      LiftRows_Option,SpectralRows_Option)
+      LiftRows_Option,SpectralRows_Option,Incoming_Option)
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -1203,6 +1964,7 @@ CONTAINS
     LOGICAL, INTENT(in) :: IncludeLift
     REAL(DP), INTENT(out) :: Column(:)
     REAL(DP), INTENT(in), OPTIONAL :: Closure_Option(3,3,4,M)
+    TYPE(IncomingRadiationCache), INTENT(in), OPTIONAL :: Incoming_Option(M)
     REAL(DP) :: DD(M), DI(M,3), TC(NF+4), LC(NF+4), RC0(M), RC1(M,3), SC(NF+4)
     REAL(DP) :: T(NF+4), V(3), Factor
     INTEGER :: K, NA, Q, J, F, Therm
@@ -1262,12 +2024,12 @@ CONTAINS
     END IF
     CALL ComputeCollisionColumn_OrderV_Point(M,NF,Active,W,U,D0,I0,V0,X,Z0,DT,Source, &
       DD,DI,TC,LC,RC0,RC1,SC,IncludeLift,Column,Closure_Option, &
-      LiftRows_Option=LiftRows_Option)
+      LiftRows_Option=LiftRows_Option,Incoming_Option=Incoming_Option)
   END SUBROUTINE ComputeCollisionLinearColumn_OrderV_Point
 
   PURE SUBROUTINE ComputeCollisionLinearAction_OrderV_Point &
     ( M,NF,Active,W,U,D0,I0,V0,X,Z0,DT,Source,Kappa,CN,KD,SD,SI,ThermC,ThermS,Direction,IncludeLift,Column, &
-      LiftRows_Option,SpectralRows_Option)
+      LiftRows_Option,SpectralRows_Option,Incoming_Option,AngularRowsOnly_Option,LeptonRowsOnly_Option)
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
@@ -1275,16 +2037,23 @@ CONTAINS
 #endif
     INTEGER, INTENT(in), OPTIONAL :: LiftRows_Option(:)
     INTEGER, INTENT(in), OPTIONAL :: SpectralRows_Option(:,:)
+    TYPE(IncomingRadiationCache), INTENT(in), OPTIONAL :: Incoming_Option(M)
     INTEGER, INTENT(in) :: M,NF,Active(:)
     REAL(DP), INTENT(in) :: W(M),U(M),D0(M),I0(M,3),V0(3),Z0(:,:),DT
     TYPE(RetainedReal), INTENT(in) :: X(:)
     REAL(DP), INTENT(in) :: Source(NF+4),Kappa(M),CN(:,:),KD(:,:),SD(NF+4,M),SI(:,:)
     REAL(DP), INTENT(in) :: ThermC(M,4,3),ThermS(NF+4,3),Direction(:)
     LOGICAL, INTENT(in) :: IncludeLift
+    LOGICAL, INTENT(in), OPTIONAL :: AngularRowsOnly_Option,LeptonRowsOnly_Option
+    LOGICAL :: AngularRowsOnly,LeptonRowsOnly
     REAL(DP), INTENT(out) :: Column(:)
     REAL(DP) :: DD(M),DI(M,3),TC(NF+4),LC(NF+4),RC0(M),RC1(M,3),SC(NF+4)
     REAL(DP) :: T(NF+4),V(3),Factors(3),Damping(M),AngularSource(NF+4)
     INTEGER :: J,F,NA,N,K,Q,L
+    AngularRowsOnly=.FALSE.
+    LeptonRowsOnly=.FALSE.
+    IF( PRESENT(AngularRowsOnly_Option) ) AngularRowsOnly=AngularRowsOnly_Option
+    IF( PRESENT(LeptonRowsOnly_Option) ) LeptonRowsOnly=LeptonRowsOnly_Option
     N = 4*M
     K = NF+4
     NA = SIZE(Active)
@@ -1303,6 +2072,23 @@ CONTAINS
     Factors(1) = TC(1)
     IF( NF >= 2 ) Factors(2) = TC(2)
     Factors(3) = TC(NF+1)-SUM(V*TC(NF+2:K))
+    IF( LeptonRowsOnly )THEN
+      Column=0.0_DP
+      IF( SIZE(SI,1)==1 )THEN
+        SC=MATMUL(SD,DD)+0.0_DP
+      ELSE
+        SC=MATMUL(SD,DD)+MATMUL(SI,Direction(M+1:N))
+      END IF
+      DO F=1,3
+        SC=SC+Factors(F)*ThermS(:,F)
+      END DO
+      DO J=1,NA
+        F=Active(J)
+        IF( F>MIN(NF,2) ) CYCLE
+        Column(N+K+J)=TC(F)-DT*SC(F)-0.0_DP
+      END DO
+      RETURN
+    END IF
     LC = Direction(N+NA+1:N+NA+K)
     IF( .NOT. IncludeLift ) LC = 0.0_DP
     IF( PRESENT(SpectralRows_Option) )THEN
@@ -1311,17 +2097,21 @@ CONTAINS
       DO L=1,M
       DO Q=1,M
         IF( SpectralRows_Option(2,Q)/=SpectralRows_Option(2,L) ) CYCLE
-        RC0(Q)=RC0(Q)+CN(SpectralRows_Option(3,L)+SpectralRows_Option(1,Q),1)*DD(L)
+        IF( .NOT. AngularRowsOnly ) &
+          RC0(Q)=RC0(Q)+CN(SpectralRows_Option(3,L)+SpectralRows_Option(1,Q),1)*DD(L)
         Damping(Q)=Damping(Q)+KD(SpectralRows_Option(3,L)+SpectralRows_Option(1,Q),1)*DD(L)
       END DO
       END DO
     ELSE
-      RC0 = MATMUL(CN,DD)
+      RC0=0.0_DP
+      IF( .NOT. AngularRowsOnly ) RC0 = MATMUL(CN,DD)
       Damping = MATMUL(KD,DD)
     END IF
     DO J = 1,3
       RC1(:,J) = -Kappa*DI(:,J)-RetainedValue(I0(:,J)+X(J*M+1:(J+1)*M))*Damping
     END DO
+    SC=0.0_DP
+    IF( .NOT. AngularRowsOnly )THEN
     IF( SIZE(SI,1)==1 )THEN
       AngularSource=0.0_DP
       DO J=1,3
@@ -1333,6 +2123,7 @@ CONTAINS
     ELSE
       SC = MATMUL(SD,DD)+MATMUL(SI,Direction(M+1:N))
     END IF
+    END IF
     DO F = 1,3
       RC0 = RC0+Factors(F)*ThermC(:,1,F)
       RC1 = RC1+Factors(F)*ThermC(:,2:4,F)
@@ -1340,7 +2131,7 @@ CONTAINS
     END DO
     CALL ComputeCollisionColumn_OrderV_Point(M,NF,Active,W,U,D0,I0,V0,X,Z0,DT,Source, &
       DD,DI,TC,LC,RC0,RC1,SC,IncludeLift,Column, &
-      LiftRows_Option=LiftRows_Option)
+      LiftRows_Option=LiftRows_Option,Incoming_Option=Incoming_Option,AngularRowsOnly_Option=AngularRowsOnly)
   END SUBROUTINE ComputeCollisionLinearAction_OrderV_Point
 
   PURE SUBROUTINE FluxInverse( D, I, V, Damping, DT, Inverse, Info, Closure_Option )
@@ -1512,71 +2303,66 @@ CONTAINS
     Info = 0
   END SUBROUTINE AssembleCollisionCondensedSystem_OrderV_Point
 
+
+
   PURE SUBROUTINE AssembleCollisionCondensedSystem &
     (M,NF,Active,W,U,D0,I0,V0,X,Z0,DT,Source,Kappa,CN,KD,SD,SI,ThermC,ThermS, &
-     R,Matrix,RHS,BInverse,RowScale,ColumnScale,Info,FrameResidual_Option,LiftRows_Option,SpectralRows_Option)
+     R,Matrix,RHS,BInverse,RowScale,ColumnScale,Info,FrameResidual_Option,LiftRows_Option,SpectralRows_Option,Incoming_Option)
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
 #endif
     INTEGER, INTENT(in) :: M,NF,Active(:)
-    INTEGER, INTENT(in), OPTIONAL :: LiftRows_Option(:)
-    INTEGER, INTENT(in), OPTIONAL :: SpectralRows_Option(:,:)
-    REAL(DP), INTENT(in) :: W(M),U(M),D0(M),I0(M,3),V0(3),Z0(:,:),DT
+    REAL(DP), INTENT(in) :: W(M),U(M),D0(M),I0(M,3),V0(3),Z0(:,:),DT,Source(NF+4),Kappa(M)
+    REAL(DP), INTENT(in) :: CN(:,:),KD(:,:),SD(NF+4,M),SI(:,:),ThermC(M,4,3),ThermS(NF+4,3),R(:)
     TYPE(RetainedReal), INTENT(in) :: X(:)
-    REAL(DP), INTENT(in) :: Source(NF+4),Kappa(M),CN(:,:),KD(:,:),SD(NF+4,M),SI(:,:)
-    REAL(DP), INTENT(in) :: ThermC(M,4,3),ThermS(NF+4,3),R(:)
     REAL(DP), INTENT(out) :: Matrix(:,:),RHS(:),BInverse(3,3,M),RowScale(:),ColumnScale(:)
     INTEGER, INTENT(out) :: Info
     REAL(DP), INTENT(in), OPTIONAL :: FrameResidual_Option(NF+4)
-    ! Row-wise construction of precisely the same angular Schur complement.
-    ! Only one bin's closure tensor is live, instead of 36*M private doubles.
-    REAL(DP) :: FM(NF+4,SIZE(Matrix,2)),FF(4,SIZE(Matrix,2)),FS(3,SIZE(Matrix,2))
-    REAL(DP) :: Lambda(NF+4,SIZE(Active)+NF+4),VC(3,SIZE(Active)+NF+4),VCol(3)
-    REAL(DP) :: Closure(3,3,4),KC(3,3),K0(3,3),KN(3,3),KV(3),KVC(3),FKVC(3)
-    REAL(DP) :: V(3),DV(3),T(NF+4),SC(NF+4),TC(NF+4),LC(NF+4),L0(NF+4)
-    REAL(DP) :: D,I(3),DI(3),RC1(3),DD,RC0,DN,VIC,VI,FDN,Factor,LE,LEC,V2,G
-    REAL(DP) :: Lift(4),InverseG(NF+4),FrameColumn(NF+4),FluxAction(SIZE(R)),RDI(M,3)
+    INTEGER, INTENT(in), OPTIONAL :: LiftRows_Option(:),SpectralRows_Option(:,:)
+    TYPE(IncomingRadiationCache), INTENT(in), OPTIONAL :: Incoming_Option(M)
+    REAL(DP) :: Response(NF+4+SIZE(Active),M),Diagonal(M),Damping(M)
+    REAL(DP) :: HA(NF+4,3),FA(SIZE(Active),3),Closure(3,3,4),K0(3,3),KN(3,3),KV(3),KDV(3),KC(3,3)
+    REAL(DP) :: V(3),DV(3),VC(3),I(3),D,DI(3),Z(3),Y(3),RD(3),VIC,VI,G,CEntry
+    REAL(DP) :: Moment(NF+4),Frame(NF+4),SC(NF+4),Boosted(NF+4),TC(NF+4),InverseG(NF+4)
+    REAL(DP) :: Lambda(NF+4,SIZE(Active)+NF+4),Lift(4),L0(NF+4),Energy,EnergyColumn,Factor,V2
     TYPE(RetainedReal) :: KP(3,3),DKP(3,3),DIC(3)
-    INTEGER :: N,K,NA,NC,Q,J,L,A,F,S,H,Slots(4)
-    LOGICAL :: NeedFrame,UseLift(SIZE(Active)+NF+4)
+    INTEGER :: N,K,NA,NC,Q,J,L,A,S,F,H,Field,Slot(4)
+
     N=4*M
     K=NF+4
     NA=SIZE(Active)
     NC=M+NA+K
     Matrix=0.0_DP
-    FM=0.0_DP
-    FF=0.0_DP
-    FS=0.0_DP
-    T=0.0_DP
+    RHS=0.0_DP
+    TC=0.0_DP
     DO J=1,NA
-      T(Active(J))=RetainedValue(X(N+J))
+      TC(Active(J))=RetainedValue(X(N+J))
     END DO
-    DV=-T(NF+2:K)
+    DV=-TC(NF+2:K)
     V=ComputeCollisionVelocity_OrderV_Point(M,NF,Active,V0,X)
-    V2=SUM(V*V)
-    L0=RetainedValue(X(N+NA+1:N+NA+K))
-    VC=0.0_DP
     Lambda=0.0_DP
+    L0=RetainedValue(X(N+NA+1:N+NA+K))
+    V2=SUM(V*V)
     DO J=1,NA+K
+      VC=0.0_DP
+      TC=0.0_DP
       IF( J<=NA )THEN
         L=Active(J)-NF-1
-        IF( L>=1 .AND. L<=3 ) VC(L,J)=-1.0_DP
+        IF( L>=1 .AND. L<=3 ) VC(L)=-1.0_DP
+      ELSE
+        TC(J-NA)=1.0_DP
       END IF
-      LC=0.0_DP
-      IF( J>NA ) LC(J-NA)=1.0_DP
-      Lambda(:,J)=LC
-      LE=(L0(NF+1)-SUM(V*L0(NF+2:K)))/(1.0_DP-V2)
-      LEC=(-SUM(VC(:,J)*L0(NF+2:K))+2.0_DP*SUM(V*VC(:,J))*LE)/(1.0_DP-V2)
-      Lambda(NF+1,J)=Lambda(NF+1,J)+LEC
-      Lambda(NF+2:K,J)=Lambda(NF+2:K,J)-VC(:,J)*LE-V*LEC
-      LE=(LC(NF+1)-SUM(V*LC(NF+2:K)))/(1.0_DP-V2)
-      Lambda(NF+1,J)=Lambda(NF+1,J)+LE-LC(NF+1)
-      Lambda(NF+2:K,J)=Lambda(NF+2:K,J)-V*LE
-      UseLift(J)=ANY(Lambda(:,J)/=0.0_DP)
+      Lambda(:,J)=TC
+      Energy=(L0(NF+1)-SUM(V*L0(NF+2:K)))/(1.0_DP-V2)
+      EnergyColumn=(-SUM(VC*L0(NF+2:K))+2.0_DP*SUM(V*VC)*Energy)/(1.0_DP-V2)
+      Lambda(NF+1,J)=Lambda(NF+1,J)+EnergyColumn
+      Lambda(NF+2:K,J)=Lambda(NF+2:K,J)-VC*Energy-V*EnergyColumn
+      Energy=(TC(NF+1)-SUM(V*TC(NF+2:K)))/(1.0_DP-V2)
+      Lambda(NF+1,J)=Lambda(NF+1,J)+Energy-TC(NF+1)
+      Lambda(NF+2:K,J)=Lambda(NF+2:K,J)-V*Energy
     END DO
-    NeedFrame=ANY(VC/=0.0_DP)
     DO Q=1,M
       D=RetainedValue(D0(Q)+X(Q))
       DO A=1,3
@@ -1586,163 +2372,173 @@ CONTAINS
       CALL ComputeCollisionClosureDerivatives_OrderV_Point(D,I,Closure(:,:,1),Closure(:,:,2:4))
       CALL FluxInverse(D,I,V,Kappa(Q),DT,BInverse(:,:,Q),Info,Closure)
       IF( Info/=0 ) RETURN
-      KV=0.0_DP
-      VI=0.0_DP
-      IF( NeedFrame )THEN
+      IF( PRESENT(Incoming_Option) )THEN
+        K0=RetainedValue(Incoming_Option(Q)%Pressure)
+        CALL ComputeCollisionPressureIncrement_OrderV_Point(D0(Q),I0(Q,:),X(Q),DIC,DKP,Incoming_Option(Q))
+      ELSE
         CALL ComputeCollisionPressure_OrderV_Point(Retain(D0(Q)),Retain(I0(Q,:)),KP)
         K0=RetainedValue(KP)
         CALL ComputeCollisionPressureIncrement_OrderV_Point(D0(Q),I0(Q,:),X(Q),DIC,DKP)
-        CALL ComputeCollisionPressure_OrderV_Point(Retain(D),Retain(I),KP)
-        KN=RetainedValue(KP)
-        KV=MATMUL(RetainedValue(DKP),V)+MATMUL(K0,DV)
-        DO A=1,3
-          VI=VI+V(A)*RetainedValue(DIC(A))+DV(A)*I0(Q,A)
-        END DO
       END IF
-      Slots=0
-      IF( PRESENT(LiftRows_Option) )THEN
-        DO L=1,SIZE(LiftRows_Option)
-          DO A=1,4
-            IF( LiftRows_Option(L)==(A-1)*M+Q ) Slots(A)=L
-          END DO
-        END DO
-      END IF
+      CALL ComputeCollisionPressure_OrderV_Point(Retain(D),Retain(I),KP)
+      KN=RetainedValue(KP)
+      KV=MATMUL(RetainedValue(DKP),V)+MATMUL(K0,DV)
+      VI=0.0_DP
+      DO A=1,3
+        VI=VI+V(A)*RetainedValue(DIC(A))+DV(A)*I0(Q,A)
+      END DO
       S=(Q-1)/(M/(2*NF))+1
       F=(S+1)/2
       G=MERGE(1.0_DP,-1.0_DP,MOD(S,2)==1)
-      DO J=1,NC
-        IF( PRESENT(SpectralRows_Option) )THEN
-          IF( J<=M )THEN
-            IF( SpectralRows_Option(2,Q)/=SpectralRows_Option(2,J) ) CYCLE
-          END IF
+      DO A=1,3
+        HA(:,A)=0.0_DP
+        HA(F,A)=G*W(Q)*V(A)
+        HA(NF+1,A)=U(Q)*(2.0_DP*V(A))
+        KC=Closure(:,:,1)*0.0_DP
+        DO L=1,3
+          Factor=0.0_DP
+          IF( L==A ) Factor=1.0_DP
+          KC=KC+Closure(:,:,L+1)*Factor
+        END DO
+        KDV=MATMUL(KC,V)
+        HA(NF+2:K,A)=U(Q)*KDV
+        HA(NF+1+A,A)=HA(NF+1+A,A)+U(Q)
+        SC=0.0_DP
+        IF( SIZE(SI,1)==1 )THEN
+          SC(NF+1+A)=SI(1,Q)
+        ELSE
+          SC=SI(:,(A-1)*M+Q)
         END IF
-        VCol=0.0_DP
-        IF( J>M ) VCol=VC(:,J-M)
-        DD=0.0_DP
-        RC0=0.0_DP
-        RC1=0.0_DP
-        IF( J<=M )THEN
-          IF( Q==J ) DD=1.0_DP
-          RC0=SpectralEntry(CN,Q,J,SpectralRows_Option)
-          RC1=-I*SpectralEntry(KD,Q,J,SpectralRows_Option)
-        ELSE IF( J<=M+NA )THEN
-          L=Active(J-M)
-          H=0
-          Factor=1.0_DP
-          IF( L<=MIN(2,NF) ) H=L
-          IF( L==NF+1 ) H=3
-          IF( L>NF+1 )THEN
+        Boosted=SC
+        Boosted(NF+1)=SC(NF+1)+SUM(V*SC(NF+2:K))
+        Boosted(NF+2:K)=SC(NF+2:K)+V*SC(NF+1)
+        Frame=0.0_DP
+        Frame(NF+1)=U(Q)*(-SUM(V*KDV))
+        Frame(NF+2:K)=U(Q)*(-V*V(A))
+        FA(:,A)=-DT*Boosted(Active)-Frame(Active)
+      END DO
+      KDV=MATMUL(Closure(:,:,1),V)
+      Z=-MATMUL(BInverse(:,:,Q),KDV)
+      Y=-DT*MATMUL(BInverse(:,:,Q),I)
+      Diagonal(Q)=1.0_DP+SUM(V*Z)
+      Damping(Q)=SUM(V*Y)
+      Moment=0.0_DP
+      Moment(F)=G*W(Q)
+      Moment(NF+1)=U(Q)
+      Moment(NF+2:K)=U(Q)*(V+KDV)
+      Matrix(M+1:M+K,Q)=Moment+MATMUL(HA,Z)
+      Frame=0.0_DP
+      Frame(NF+1)=U(Q)*SUM(V*KDV)
+      Matrix(M+K+1:NC,Q)=Frame(Active)+MATMUL(FA,Z)
+      Response(1:K,Q)=MATMUL(HA,Y)
+      Response(K+1:K+NA,Q)=MATMUL(FA,Y)
+      RD=-MATMUL(BInverse(:,:,Q),R([M+Q,2*M+Q,3*M+Q]))
+      RHS(Q)=-R(Q)-SUM(V*RD)
+      RHS(M+1:M+K)=RHS(M+1:M+K)-MATMUL(HA,RD)
+      RHS(M+K+1:NC)=RHS(M+K+1:NC)-MATMUL(FA,RD)
+      Slot=0
+      IF( PRESENT(LiftRows_Option) )THEN
+        DO L=1,SIZE(LiftRows_Option)
+        DO A=1,4
+          IF( LiftRows_Option(L)==(A-1)*M+Q ) Slot(A)=L
+        END DO
+        END DO
+      END IF
+      DO J=1,NA+K
+        VC=0.0_DP
+        Field=0
+        H=0
+        Factor=1.0_DP
+        IF( J<=NA )THEN
+          Field=Active(J)
+          IF( Field<=MIN(2,NF) ) H=Field
+          IF( Field==NF+1 ) H=3
+          IF( Field>NF+1 )THEN
+            VC(Field-NF-1)=-1.0_DP
             H=3
-            Factor=-V(L-NF-1)
-          END IF
-          IF( H>0 )THEN
-            RC0=Factor*ThermC(Q,1,H)
-            RC1=Factor*ThermC(Q,2:4,H)
+            Factor=-V(Field-NF-1)
           END IF
         END IF
-        KC=0.0_DP
-        IF( DD/=0.0_DP )THEN
-          KC=Closure(:,:,1)*DD
-          DO A=1,3
-            KC=KC+Closure(:,:,A+1)*0.0_DP
-          END DO
-        END IF
-        KVC=MATMUL(KC,V)
-        IF( ANY(VCol/=0.0_DP) ) KVC=KVC+MATMUL(KN,VCol)
-        VIC=SUM(VCol*I)
-        DN=DD+VIC
         Lift=0.0_DP
-        IF( J>M )THEN
-        IF( UseLift(J-M) )THEN
+        IF( ANY(Lambda(:,J)/=0.0_DP) )THEN
           DO A=1,4
             IF( PRESENT(LiftRows_Option) )THEN
-              IF( Slots(A)==0 ) CYCLE
-              Lift(A)=SUM(Z0(Slots(A),:)*Lambda(:,J-M))
+              IF( Slot(A)==0 ) CYCLE
+              Lift(A)=SUM(Z0(Slot(A),:)*Lambda(:,J))
             ELSE
-              Lift(A)=SUM(Z0((A-1)*M+Q,:)*Lambda(:,J-M))
+              Lift(A)=SUM(Z0((A-1)*M+Q,:)*Lambda(:,J))
             END IF
           END DO
         END IF
-        END IF
-        DI=-MATMUL(BInverse(:,:,Q),KVC-DT*RC1+Lift(2:4))
-        Matrix(Q,J)=DN-DT*RC0+Lift(1)+SUM(V*DI)
-        Matrix(M+F,J)=Matrix(M+F,J)+G*W(Q)*DN
-        Matrix(M+NF+1,J)=Matrix(M+NF+1,J)+U(Q)*(DD+2.0_DP*VIC)
-        Matrix(M+NF+2:M+K,J)=Matrix(M+NF+2:M+K,J)+U(Q)*(V*DD+VCol*D+KVC)
-        FrameColumn=0.0_DP
-        FrameColumn(NF+1)=U(Q)*(SUM(VCol*I0(Q,:))-SUM(VCol*KV)-SUM(V*KVC))
-        FrameColumn(NF+2:K)=U(Q)*(VCol*D0(Q)-VCol*VI-V*VIC)
-        Matrix(M+K+1:NC,J)=Matrix(M+K+1:NC,J)+FrameColumn(Active)
-        KC=0.0_DP
-        IF( ANY(DI/=0.0_DP) )THEN
-          KC=Closure(:,:,1)*0.0_DP
-          DO A=1,3
-            KC=KC+Closure(:,:,A+1)*DI(A)
-          END DO
-        END IF
-        FKVC=MATMUL(KC,V)
-        FDN=SUM(V*DI)
-        FM(F,J)=FM(F,J)+G*W(Q)*FDN
-        FM(NF+1,J)=FM(NF+1,J)+U(Q)*(2.0_DP*FDN)
-        FM(NF+2:K,J)=FM(NF+2:K,J)+U(Q)*(DI+FKVC)
-        FF(1,J)=FF(1,J)+U(Q)*(-SUM(V*FKVC))
-        FF(2:4,J)=FF(2:4,J)+U(Q)*(-V*FDN)
-        FS(:,J)=FS(:,J)+U(Q)*(-Kappa(Q)*DI)
+        KDV=MATMUL(KN,VC)
+        DI=KDV+Lift(2:4)
+        IF( H>0 ) DI=DI-DT*(Factor*ThermC(Q,2:4,H))
+        DI=-MATMUL(BInverse(:,:,Q),DI)
+        VIC=SUM(VC*I)
+        Matrix(Q,M+J)=VIC+Lift(1)+SUM(V*DI)
+        IF( H>0 ) Matrix(Q,M+J)=Matrix(Q,M+J)-DT*(Factor*ThermC(Q,1,H))
+        Moment=0.0_DP
+        Moment(F)=G*W(Q)*VIC
+        Moment(NF+1)=U(Q)*(2.0_DP*VIC)
+        Moment(NF+2:K)=U(Q)*(VC*D+KDV)
+        Matrix(M+1:M+K,M+J)=Matrix(M+1:M+K,M+J)+Moment+MATMUL(HA,DI)
+        Frame=0.0_DP
+        Frame(NF+1)=U(Q)*(SUM(VC*I0(Q,:))-SUM(VC*KV)-SUM(V*KDV))
+        Frame(NF+2:K)=U(Q)*(VC*D0(Q)-VC*VI-V*VIC)
+        Matrix(M+K+1:NC,M+J)=Matrix(M+K+1:NC,M+J)-Frame(Active)+MATMUL(FA,DI)
       END DO
+    END DO
+    DO J=1,M
+      DO Q=1,M
+        IF( PRESENT(SpectralRows_Option) )THEN
+          IF( SpectralRows_Option(2,Q)/=SpectralRows_Option(2,J) ) CYCLE
+        END IF
+        CEntry=SpectralEntry(KD,Q,J,SpectralRows_Option)
+        Matrix(Q,J)=-DT*SpectralEntry(CN,Q,J,SpectralRows_Option)+Damping(Q)*CEntry
+        IF( Q==J ) Matrix(Q,J)=Matrix(Q,J)+Diagonal(Q)
+        Matrix(M+1:NC,J)=Matrix(M+1:NC,J)+Response(:,Q)*CEntry
+      END DO
+      SC=SD(:,J)
+      Boosted=SC
+      Boosted(NF+1)=SC(NF+1)+SUM(V*SC(NF+2:K))
+      Boosted(NF+2:K)=SC(NF+2:K)+V*SC(NF+1)
+      Matrix(M+K+1:NC,J)=Matrix(M+K+1:NC,J)-DT*Boosted(Active)
     END DO
     IF( PRESENT(FrameResidual_Option) )THEN
       InverseG=FrameResidual_Option
       InverseG(NF+1)=(FrameResidual_Option(NF+1)-SUM(V*FrameResidual_Option(NF+2:K)))/(1.0_DP-SUM(V*V))
       InverseG(NF+2:K)=FrameResidual_Option(NF+2:K)-V*InverseG(NF+1)
     END IF
-    DO J=1,NC
-      VCol=0.0_DP
-      IF( J>M ) VCol=VC(:,J-M)
+    DO J=1,NA
+      Field=Active(J)
+      VC=0.0_DP
+      Factor=1.0_DP
+      H=0
       TC=0.0_DP
-      SC=0.0_DP
-      IF( J<=M )THEN
-        SC=SD(:,J)
-      ELSE IF( J<=M+NA )THEN
-        L=Active(J-M)
-        TC(L)=1.0_DP
-        H=0
-        Factor=1.0_DP
-        IF( L<=MIN(2,NF) ) H=L
-        IF( L==NF+1 ) H=3
-        IF( L>NF+1 )THEN
-          H=3
-          Factor=-V(L-NF-1)
-        END IF
-        IF( H>0 ) SC=Factor*ThermS(:,H)
+      TC(Field)=1.0_DP
+      IF( Field<=MIN(2,NF) ) H=Field
+      IF( Field==NF+1 ) H=3
+      IF( Field>NF+1 )THEN
+        H=3
+        VC(Field-NF-1)=-1.0_DP
+        Factor=-V(Field-NF-1)
       END IF
-      FrameColumn=SC
-      FrameColumn(NF+1)=SC(NF+1)+SUM(V*SC(NF+2:K))+SUM(VCol*Source(NF+2:K))
-      FrameColumn(NF+2:K)=SC(NF+2:K)+V*SC(NF+1)+VCol*Source(NF+1)
-      Matrix(M+1:M+K,J)=Matrix(M+1:M+K,J)-TC+FM(:,J)
-      Matrix(M+K+1:NC,J)=TC(Active)-DT*FrameColumn(Active)-Matrix(M+K+1:NC,J)
-      IF( PRESENT(FrameResidual_Option) .AND. J>M .AND. J<=M+NA )THEN
-        L=Active(J-M)-NF-1
-        IF( L>=1 .AND. L<=3 )THEN
-          FrameColumn=0.0_DP
-          FrameColumn(NF+1)=InverseG(NF+1+L)
-          FrameColumn(NF+1+L)=InverseG(NF+1)
-          Matrix(M+K+1:NC,J)=Matrix(M+K+1:NC,J)+FrameColumn(Active)
-        END IF
-      END IF
-      FrameColumn=0.0_DP
-      FrameColumn(NF+1)=SUM(V*FS(:,J))
-      FrameColumn(NF+2:K)=FS(:,J)
       SC=0.0_DP
-      SC(NF+1:K)=FF(:,J)
-      Matrix(M+K+1:NC,J)=Matrix(M+K+1:NC,J)+(-DT*FrameColumn(Active)-SC(Active))
+      IF( H>0 ) SC=Factor*ThermS(:,H)
+      Boosted=SC
+      Boosted(NF+1)=SC(NF+1)+SUM(V*SC(NF+2:K))+SUM(VC*Source(NF+2:K))
+      Boosted(NF+2:K)=SC(NF+2:K)+V*SC(NF+1)+VC*Source(NF+1)
+      Matrix(M+1:M+K,M+J)=Matrix(M+1:M+K,M+J)-TC
+      Matrix(M+K+1:NC,M+J)=Matrix(M+K+1:NC,M+J)+TC(Active)-DT*Boosted(Active)
+      IF( PRESENT(FrameResidual_Option) .AND. Field>NF+1 )THEN
+        L=Field-NF-1
+        Frame=0.0_DP
+        Frame(NF+1)=InverseG(NF+1+L)
+        Frame(NF+1+L)=InverseG(NF+1)
+        Matrix(M+K+1:NC,M+J)=Matrix(M+K+1:NC,M+J)+Frame(Active)
+      END IF
     END DO
-    DO Q=1,M
-      RDI(Q,:)=-MATMUL(BInverse(:,:,Q),R([M+Q,2*M+Q,3*M+Q]))
-    END DO
-    CALL FluxColumnAction(M,NF,Active,W,U,D0,I0,V0,X,Z0,DT,Source,Kappa,RDI,FluxAction, &
-      LiftRows_Option=LiftRows_Option)
-    RHS(1:M)=-R(1:M)-FluxAction(1:M)
-    RHS(M+1:NC)=-R(N+1:)-FluxAction(N+1:)
+    RHS(M+1:NC)=RHS(M+1:NC)-R(N+1:)
     RowScale=MAX(MAXVAL(ABS(Matrix),DIM=2),TINY(1.0_DP))
     DO J=1,NC
       Matrix(:,J)=Matrix(:,J)/RowScale
@@ -1758,14 +2554,17 @@ CONTAINS
   PURE SUBROUTINE ExpandCollisionCondensedStep_OrderV_Point &
     ( M, NF, Active, W, U, D0, I0, V0, X, Z0, DT, Source, Kappa, CN, KD, SD, SI, &
       ThermC, ThermS, R, BInverse, Condensed, Step, PhysicalAction, &
-      LiftRows_Option,SpectralRows_Option)
+      LiftRows_Option,SpectralRows_Option,Incoming_Option,SearchWeightsOnly_Option)
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
 #elif defined(THORNADO_OACC)
     !$ACC ROUTINE SEQ
 #endif
+    LOGICAL, INTENT(in), OPTIONAL :: SearchWeightsOnly_Option
+    LOGICAL :: SearchWeightsOnly
     INTEGER, INTENT(in), OPTIONAL :: LiftRows_Option(:)
     INTEGER, INTENT(in), OPTIONAL :: SpectralRows_Option(:,:)
+    TYPE(IncomingRadiationCache), INTENT(in), OPTIONAL :: Incoming_Option(M)
     INTEGER, INTENT(in) :: M, NF, Active(:)
     REAL(DP), INTENT(in) :: W(M), U(M), D0(M), I0(M,3), V0(3), Z0(:,:), DT
     TYPE(RetainedReal), INTENT(in) :: X(:)
@@ -1774,6 +2573,8 @@ CONTAINS
     REAL(DP), INTENT(out) :: Step(:), PhysicalAction(:)
     REAL(DP) :: Column(SIZE(R)), Current(SIZE(R)), DI(M,3), Action(SIZE(R))
     INTEGER :: J, Q, N, Field
+    SearchWeightsOnly=.FALSE.
+    IF( PRESENT(SearchWeightsOnly_Option) ) SearchWeightsOnly=SearchWeightsOnly_Option
     N = 4*M
     Step(1:M) = Condensed(1:M)
     Step(N+1:) = Condensed(M+1:)
@@ -1782,7 +2583,8 @@ CONTAINS
     PhysicalAction = 0.0_DP
     CALL ComputeCollisionLinearAction_OrderV_Point(M,NF,Active,W,U,D0,I0,V0,X,Z0,DT,Source,Kappa,CN,KD,SD,SI, &
       ThermC,ThermS,Step,.TRUE.,Current, &
-      LiftRows_Option=LiftRows_Option,SpectralRows_Option=SpectralRows_Option)
+      LiftRows_Option=LiftRows_Option,SpectralRows_Option=SpectralRows_Option,Incoming_Option=Incoming_Option, &
+      AngularRowsOnly_Option=SearchWeightsOnly)
     DO Q = 1, M
       DI(Q,:) = -MATMUL(BInverse(:,:,Q),R([M+Q,2*M+Q,3*M+Q])+Current([M+Q,2*M+Q,3*M+Q]))
     END DO
@@ -1791,7 +2593,8 @@ CONTAINS
     END DO
     CALL ComputeCollisionLinearAction_OrderV_Point(M,NF,Active,W,U,D0,I0,V0,X,Z0,DT,Source,Kappa,CN,KD,SD,SI, &
       ThermC,ThermS,Step,.FALSE.,PhysicalAction, &
-      LiftRows_Option=LiftRows_Option,SpectralRows_Option=SpectralRows_Option)
+      LiftRows_Option=LiftRows_Option,SpectralRows_Option=SpectralRows_Option,Incoming_Option=Incoming_Option, &
+      LeptonRowsOnly_Option=SearchWeightsOnly)
   END SUBROUTINE ExpandCollisionCondensedStep_OrderV_Point
 
   PURE SUBROUTINE ComputeCollisionMetrics_OrderV_Point &

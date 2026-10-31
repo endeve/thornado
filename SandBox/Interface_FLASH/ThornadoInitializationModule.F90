@@ -122,7 +122,8 @@ module ThornadoInitializationModule
     InitializeSlopeLimiter_Euler_NonRelativistic_TABLE, &
     FinalizeSlopeLimiter_Euler_NonRelativistic_TABLE
   use TwoMoment_NeutrinoMatterSolverModule, only: &
-    InitializeNeutrinoMatterSolverParameters
+    InitializeNeutrinoMatterSolverParameters, &
+    FinalizeNeutrinoMatterSolverParameters
 #ifdef TWOMOMENT_ORDER_V
   use TwoMoment_DiscretizationModule_Streaming, only: &
     InitializeSourceAwareLLF
@@ -727,6 +728,8 @@ contains
   subroutine FreeThornado(write_timers)
 
     logical, intent(in) :: write_timers
+
+    call FinalizeNeutrinoMatterSolverParameters
 
     call DestroyMesh( MeshE )
 

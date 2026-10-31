@@ -122,7 +122,8 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     EddingtonFactor
 #if defined(TWOMOMENT_ORDER_V)
   USE TwoMoment_RetainedArithmeticModule
-  USE TwoMoment_NewtonSolverModule_OrderV, ONLY: SolveNeutrinoMatterCoupling_Newton_OrderV_Batch
+  USE TwoMoment_NewtonSolverModule_OrderV, ONLY: SolveNeutrinoMatterCoupling_Newton_OrderV_Batch, &
+    FinalizeNewtonSolverWorkspace
 #endif
   USE, INTRINSIC :: IEEE_ARITHMETIC, ONLY: IEEE_IS_FINITE
   IMPLICIT NONE
@@ -1528,6 +1529,9 @@ CONTAINS
 
   SUBROUTINE FinalizeNeutrinoMatterSolverParameters
 
+#if defined(TWOMOMENT_ORDER_V)
+    CALL FinalizeNewtonSolverWorkspace
+#endif
     CALL FinalizeNeutrinoLeptonInteractionKernels
     SolverParametersInitialized = .FALSE.
 
