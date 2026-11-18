@@ -35,6 +35,7 @@ MODULE PolynomialBasisModule_Lagrange
   TYPE(PolynomialBasisType), ALLOCATABLE, PUBLIC :: L_X3(:), dL_X3(:)
 
   PUBLIC :: InitializePolynomialBasis_Lagrange
+  PUBLIC :: FinalizePolynomialBasis_Lagrange
   PUBLIC :: evalL
   PUBLIC :: evalL_X1
   PUBLIC :: evalLX
@@ -69,6 +70,18 @@ CONTAINS
     CALL ComputeMassMatrix
 
   END SUBROUTINE InitializePolynomialBasis_Lagrange
+
+  SUBROUTINE FinalizePolynomialBasis_Lagrange
+
+    DEALLOCATE( nodes )
+    DEALLOCATE( L_E, dL_E )
+    DEALLOCATE( L_X1, dL_X1 )
+    DEALLOCATE( L_X2, dL_X2 )
+    DEALLOCATE( L_X3, dL_X3 )
+    DEALLOCATE( IndL_Q  )
+    DEALLOCATE( IndLX_Q )
+
+  END SUBROUTINE FinalizePolynomialBasis_Lagrange
 
 
   SUBROUTINE InitializeNodes
