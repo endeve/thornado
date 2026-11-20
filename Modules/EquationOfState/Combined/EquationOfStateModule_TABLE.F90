@@ -2715,7 +2715,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Scalar &
-    ( D, T, Ye, Ym, Mnu )
+    ( D, T, Ye, Ym, Mnu, ChargedCurrentActive_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -2725,10 +2725,18 @@ CONTAINS
 
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: Mnu
+    LOGICAL, INTENT(in), OPTIONAL :: ChargedCurrentActive_Option
 
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
     REAL(DP) :: Me, Mp, Mn
-  
+
+    IF( PRESENT(ChargedCurrentActive_Option) )THEN
+      IF( .NOT. ChargedCurrentActive_Option )THEN
+        Mnu=Zero
+        RETURN
+      END IF
+    END IF
+
 #ifdef MICROPHYSICS_WEAKLIB
 
     D_P = D / UnitD
@@ -2766,31 +2774,35 @@ CONTAINS
 
 
   SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector &
-    ( D, T, Ye, Ym, Mnu )
+    ( D, T, Ye, Ym, Mnu, ChargedCurrentMask_Option )
 
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: Mnu(1:)
+    LOGICAL, INTENT(in), OPTIONAL :: ChargedCurrentMask_Option(1:)
 
     REAL(DP) :: D_P, T_P, Yp_P, Ye_P, Ym_P
     INTEGER  :: iD, iT, iY
     REAL(DP) :: dD, dT, dY
     REAL(DP) :: Me, Mp, Mn
-    
+
+    LOGICAL :: ChargedCurrentMask(SIZE(D))
     INTEGER :: iP, nP
 
     nP = SIZE( D )
+    ChargedCurrentMask=.TRUE.
+    IF( PRESENT(ChargedCurrentMask_Option) ) ChargedCurrentMask=ChargedCurrentMask_Option
 
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
     !$OMP PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Me, Mp, Mn ) &
-    !$OMP MAP( to: D, T, Ye, Ym, D_T, T_T, Yp_T, OS_Me, OS_Mp, OS_Mn, Me_T, Mp_T, Mn_T ) &
+    !$OMP MAP( to: D, T, Ye, Ym, ChargedCurrentMask, D_T, T_T, Yp_T, OS_Me, OS_Mp, OS_Mn, Me_T, Mp_T, Mn_T ) &
     !$OMP MAP( from: Mnu )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
     !$ACC PRIVATE( D_P, T_P, Yp_P, Ye_P, Ym_P, iD, iT, iY, dD, dT, dY, Me, Mp, Mn ) &
-    !$ACC COPYIN( D, T, Ye, Ym, D_T, T_T, Yp_T, OS_Me, OS_Mp, OS_Mn, Me_T, Mp_T, Mn_T ) &
+    !$ACC COPYIN( D, T, Ye, Ym, ChargedCurrentMask, D_T, T_T, Yp_T, OS_Me, OS_Mp, OS_Mn, Me_T, Mp_T, Mn_T ) &
     !$ACC COPYOUT( Mnu )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
@@ -2804,7 +2816,7 @@ CONTAINS
       Ym_P = Ym(iP) / UnitY
       Yp_P = Ye_P + Ym_P
 
-      IF ( D_P >= Eos_MinD ) THEN
+      IF ( ChargedCurrentMask(iP) .AND. D_P >= Eos_MinD ) THEN
         CALL LogInterpolateSingleVariable_3D_Custom_Point &
                ( D_P, T_P, Yp_P, D_T, T_T, Yp_T, OS_Me, Me_T, Me )
 
@@ -2845,7 +2857,7 @@ CONTAINS
   END SUBROUTINE ComputeElectronNeutrinoChemicalPotential_TABLE_Vector
 
   SUBROUTINE ComputeMuonNeutrinoChemicalPotential_TABLE_Scalar &
-    ( D, T, Ye, Ym, Mnu )
+    ( D, T, Ye, Ym, Mnu, ChargedCurrentActive_Option )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -2855,17 +2867,26 @@ CONTAINS
 
     REAL(DP), INTENT(in)  :: D, T, Ye, Ym
     REAL(DP), INTENT(out) :: Mnu
-  
+    LOGICAL, INTENT(in), OPTIONAL :: ChargedCurrentActive_Option
+
+    IF( PRESENT(ChargedCurrentActive_Option) )THEN
+      IF( .NOT. ChargedCurrentActive_Option )THEN
+        Mnu=Zero
+        RETURN
+      END IF
+    END IF
+
     Mnu = Zero
 
   END SUBROUTINE ComputeMuonNeutrinoChemicalPotential_TABLE_Scalar
 
   SUBROUTINE ComputeMuonNeutrinoChemicalPotential_TABLE_Vector &
-    ( D, T, Ye, Ym, Mnu )
+    ( D, T, Ye, Ym, Mnu, ChargedCurrentMask_Option )
 
     REAL(DP), INTENT(in)  :: D(1:), T(1:), Ye(1:), Ym(1:)
     REAL(DP), INTENT(out) :: Mnu(1:)
-    
+    LOGICAL, INTENT(in), OPTIONAL :: ChargedCurrentMask_Option(1:)
+
     INTEGER :: iP, nP
 
     nP = SIZE( D )

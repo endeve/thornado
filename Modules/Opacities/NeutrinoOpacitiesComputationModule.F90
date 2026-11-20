@@ -78,7 +78,8 @@ MODULE NeutrinoOpacitiesComputationModule
     QueryOpacity_Pair, &
     QueryOpacity_Brem, &
     QueryOpacity_NuPair, &
-    EmAb_Muon_Method, nE_Muon_2D, &
+    QueryOpacity_NMS, QueryOpacity_LFE, QueryOpacity_LFC, QueryOpacity_IMD, &
+    EmAb_Muon_Method, &
     nProcess_MuonOpac, iProcessList_MuonOpac
   USE RadiationFieldsModule, ONLY: &
     iNuE, iNuE_Bar, iNuM, iNuM_Bar, iNuT, iNuT_Bar, &
@@ -107,7 +108,7 @@ MODULE NeutrinoOpacitiesComputationModule
     LinearInterp1D_1DArray_Point, &
     LinearInterp3D_3DArray_Point
 
-  USE wlCalculateAbEmOpacityModule, ONLY: &
+  USE wlCalculateEmAbOpacityModule, ONLY: &
     ElasticAbsorptionOpacityNue, &
     ElasticAbsorptionOpacityNum, &
     CalculateHorowitzWeakMagRecoil
@@ -157,6 +158,21 @@ MODULE NeutrinoOpacitiesComputationModule
   PUBLIC :: ComputeNeutrinoOpacityRates_MuonNLS
   PUBLIC :: ComputeNeutrinoOpacityRates_MuonLFEC
   PUBLIC :: ComputeNeutrinoOpacityRates_MuonIMD
+
+  PUBLIC :: SetOpacityMask
+  INTEGER, PARAMETER, PUBLIC :: nOp = 12
+  INTEGER, PARAMETER, PUBLIC :: iOp_EmAb_Electron = 1
+  INTEGER, PARAMETER, PUBLIC :: iOp_EmAb_Muon = 2
+  INTEGER, PARAMETER, PUBLIC :: iOp_ECTable = 3
+  INTEGER, PARAMETER, PUBLIC :: iOp_Iso = 4
+  INTEGER, PARAMETER, PUBLIC :: iOp_NES = 5
+  INTEGER, PARAMETER, PUBLIC :: iOp_Pair = 6
+  INTEGER, PARAMETER, PUBLIC :: iOp_NuPair = 7
+  INTEGER, PARAMETER, PUBLIC :: iOp_Brem = 8
+  INTEGER, PARAMETER, PUBLIC :: iOp_NMS = 9
+  INTEGER, PARAMETER, PUBLIC :: iOp_LFE = 10
+  INTEGER, PARAMETER, PUBLIC :: iOp_LFC = 11
+  INTEGER, PARAMETER, PUBLIC :: iOp_IMD = 12
 
   REAL(DP), PARAMETER :: Log1d100 = LOG( 1.0d100 )
   REAL(DP), PARAMETER :: UnitD    = Gram / Centimeter**3
@@ -252,7 +268,7 @@ CONTAINS
 
 
   SUBROUTINE ComputeEquilibriumDistributions &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0 )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0, OpacityMask_Option )
 
     ! --- Equilibrium Neutrino Distributions (Multiple D,T,Y) ---
 
@@ -268,6 +284,8 @@ CONTAINS
 
     REAL(DP) :: Mnue(iX_B:iX_E)
     REAL(DP) :: Mnum(iX_B:iX_E)
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
     REAL(DP) :: M, kT
     INTEGER  :: iE, iS, iX
 
@@ -281,12 +299,16 @@ CONTAINS
     !$ACC COPYIN( E, D, T, Ye, Ym )
 #endif
 
+    CALL ResolveOpacityMask(iX_B,iX_E,D,LocalOpacityMask,OpacityMask_Option)
+
     ! --- Compute Chemical Potentials ---
 
     CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
-           ( D, T, Ye, Ym, Mnue )
+           ( D, T, Ye, Ym, Mnue, &
+             ChargedCurrentMask_Option = ElectronNeutrinoMuMask( LocalOpacityMask ) )
     CALL ComputeMuonNeutrinoChemicalPotential_TABLE &
-           ( D, T, Ye, Ym, Mnum )
+           ( D, T, Ye, Ym, Mnum, &
+             ChargedCurrentMask_Option = MuonNeutrinoMuMask( LocalOpacityMask ) )
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
@@ -882,7 +904,8 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacities_EC &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0, opEC, &
-      T_old, Ye_old, Ym_old )
+      T_old, Ye_old, Ym_old, &
+      OpacityMask_Option )
 
     ! --- Electron Capture Opacities (Multiple D,T,Y) ---
 
@@ -905,6 +928,8 @@ CONTAINS
     REAL(DP) :: E_P, D_P, T_P, Ye_P, Ym_P
     INTEGER  :: iE, iS, iX
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
@@ -922,7 +947,8 @@ CONTAINS
       ! do EmAb on nucleons first
       CALL ComputeNeutrinoOpacities_EC_NuE_Nucleons &
              ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
-               E, D, T, Ye, Ym, opEC )
+               E, D, T, Ye, Ym, opEC, &
+             OpacityMask_Option = OpacityMask_Option )
 
       ! now add contribution from EC on heavy nuclei
       IF ( use_EC_table > 0 ) THEN
@@ -930,7 +956,8 @@ CONTAINS
         CALL ComputeNeutrinoOpacities_EC_NuE_Nuclei &
               ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
                 E, D, T, Ye, Ym, f0, opEC, &
-                T_old = T_old, Ye_old = Ye_old, Ym_old = Ym_old )
+                T_old = T_old, Ye_old = Ye_old, Ym_old = Ym_old, &
+             OpacityMask_Option = OpacityMask_Option )
 
       END IF
 
@@ -940,7 +967,8 @@ CONTAINS
 
       CALL ComputeNeutrinoOpacities_EC_NuM_Nucleons &
              ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, &
-               E, D, T, Ye, Ym, opEC )
+               E, D, T, Ye, Ym, opEC, &
+             OpacityMask_Option = OpacityMask_Option )
 
     END IF
 
@@ -996,7 +1024,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_EC_NuE_Nucleons &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, opEC )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, opEC, &
+      OpacityMask_Option )
 
     ! --- Electron Capture Opacities (Multiple D,T,Y) ---
 
@@ -1015,21 +1044,29 @@ CONTAINS
     REAL(DP) :: E_P, D_P, T_P, Yp_P
     INTEGER  :: iE, iS, iX
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Ye_P )
+    !$OMP MAP( to: LocalOpacityMask ) &
+    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Ye_P )
+    !$ACC COPYIN( LocalOpacityMask ) &
+    !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Ye_P )
+    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P )
 #endif
     DO iX = iX_B, iX_E
     DO iS = iNuE, iNuE_Bar
     DO iE = iE_B, iE_E
 
-      IF ( QueryOpacity_EmAb( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_EmAb_Electron,iX) ) THEN
 
         LogE_P = LOG10( E(iE) / UnitE )
 
@@ -1059,7 +1096,8 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacities_EC_NuE_Nuclei &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, f0, opEC, &
-      T_old, Ye_old, Ym_old )
+      T_old, Ye_old, Ym_old, &
+      OpacityMask_Option )
 
     ! --- Electron Capture Opacities (Multiple D,T,Y) ---
 
@@ -1095,6 +1133,12 @@ CONTAINS
     REAL(dp), DIMENSION(:),   ALLOCATABLE :: Xh, Ah, Ah_old, EC_rate
     REAL(dp), DIMENSION(:,:), ALLOCATABLE :: spec_nodes, spec_fine
     REAL(dp), DIMENSION(:,:), ALLOCATABLE :: spec_elements, spec_elements_nodes
+
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
 
     IF( PRESENT ( T_old ) ) THEN
       T0 => T_old(iX_B:iX_E)
@@ -1153,39 +1197,41 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP MAP( to: LocalOpacityMask ) &
     !$OMP MAP( to: CenterE, WidthE, NodesE ) &
-    !$OMP PRIVATE( D_P, T_P, Ye_P, T0_P, Ye0_P, Xnuc, loctot, & 
+    !$OMP PRIVATE( D_P, T_P, Ye_P, T0_P, Ye0_P, Xnuc, loctot, &
     !$OMP          dspec_fine, dEC_T, dE_node, E_node, &
-    !$OMP          iE, iE1, iE2, iNodeE1, a, b, f_a, f_b, & 
+    !$OMP          iE, iE1, iE2, iNodeE1, a, b, f_a, f_b, &
     !$OMP          iD, iT, iY, dD, dT, dY )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC COPYIN ( CenterE, WidthE, NodesE ) &
-    !$ACC PRIVATE( D_P, T_P, Ye_P, T0_P, Ye0_P, Xnuc, loctot, & 
+    !$ACC PRIVATE( D_P, T_P, Ye_P, T0_P, Ye0_P, Xnuc, loctot, &
     !$ACC          dspec_fine, dEC_T, dE_node, E_node, &
-    !$ACC          iE, iE1, iE2, iNodeE1, a, b, f_a, f_b, & 
-    !$ACC          iD, iT, iY, dD, dT, dY ) & 
+    !$ACC          iE, iE1, iE2, iNodeE1, a, b, f_a, f_b, &
+    !$ACC          iD, iT, iY, dD, dT, dY ) &
     !$ACC PRESENT( Xh, Ah, Ah_old, T0, Ye0, EC_rate, OS_EmAb_EC_rate, &
     !$ACC          OS_EmAb_EC_spec, EmAb_EC_spec_T, WeightsE,         &
     !$ACC          f0, EC_nE, EC_dE, EC_iE_max, EC_iNodeE_max,        &
     !$ACC          Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO &
-    !$OMP PRIVATE( D_P, T_P, Ye_P, T0_P, Ye0_P, Xnuc, loctot, & 
+    !$OMP PRIVATE( D_P, T_P, Ye_P, T0_P, Ye0_P, Xnuc, loctot, &
     !$OMP          dspec_fine, dEC_T, dE_node, E_node, &
-    !$OMP          iE, iE1, iE2, iNodeE1, a, b, f_a, f_b, & 
+    !$OMP          iE, iE1, iE2, iNodeE1, a, b, f_a, f_b, &
     !$OMP          iD, iT, iY, dD, dT, dY )
 #endif
     DO iX = iX_B, iX_E
 
-      IF ( QueryOpacity_EmAb_Nuclei( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_ECTable,iX) ) THEN
 
         D_P  = D (iX) / UnitD
         T_P  = T (iX) / UnitT
         Ye_P = Ye(iX) / UnitY
 
-        ! If T_old and Ye_old were present, use the old state to 
-        ! calculate the interpolation indices, otherwise the 
+        ! If T_old and Ye_old were present, use the old state to
+        ! calculate the interpolation indices, otherwise the
         ! current state is used, ie T0 = T, Ye0 = Ye
         T0_P  = T0 (iX) / UnitT
         Ye0_P = Ye0(iX) / UnitY
@@ -1372,7 +1418,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, opEC )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, opEC, &
+      OpacityMask_Option )
 
     ! --- Muon Capture Opacities (Multiple D,T,Y) ---
 
@@ -1389,9 +1436,13 @@ CONTAINS
     REAL(DP) :: E_P, D_P, T_P, Ye_P, Ym_P
     INTEGER  :: iE, iS, iX
 
-    REAL(DP), ALLOCATABLE :: Mumu(:)
+    REAL(DP) :: kT
+    REAL(DP), ALLOCATABLE :: Mumu(:), Munum(:)
     REAL(DP), ALLOCATABLE :: Mun(:), Mn_eff(:), Un(:)
     REAL(DP), ALLOCATABLE :: Mup(:), Mp_eff(:), Up(:)
+
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
 
 #ifndef EOSMODE_COMPOSE
 #if defined(THORNADO_OMP_OL)
@@ -1412,6 +1463,7 @@ CONTAINS
 #endif
 
     ALLOCATE( Mumu  (iX_B:iX_E) )
+    ALLOCATE( Munum (iX_B:iX_E) )
     ALLOCATE( Mun   (iX_B:iX_E) )
     ALLOCATE( Mn_eff(iX_B:iX_E) )
     ALLOCATE( Un    (iX_B:iX_E) )
@@ -1421,11 +1473,20 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu )
+    !$OMP MAP( alloc: Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu, Munum )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA  &
-    !$ACC CREATE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu )
+    !$ACC CREATE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu, Munum )
 #endif
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
+    ! --- Same muon-neutrino chemical potential as the equilibrium distribution ---
+
+    CALL ComputeMuonNeutrinoChemicalPotential_TABLE &
+           ( D, T, Ye, Ym, Munum, &
+             ChargedCurrentMask_Option = MuonNeutrinoMuMask( LocalOpacityMask ) )
 
     CALL ComputeMuonChemicalPotential_TABLE    ( D, T, Ye, Ym, Mumu )
     CALL ComputeNeutronChemicalPotential_TABLE ( D, T, Ye, Ym, Mun )
@@ -1442,7 +1503,8 @@ CONTAINS
                E, D, T, Ye, Ym, Mumu, &
                Mun, Mn_eff, Un, &
                Mup, Mp_eff, Up, &
-               opEC )
+               opEC, &
+             OpacityMask_Option = OpacityMask_Option )
 
     ELSE IF ( EmAb_Muon_Method == 2 ) THEN
 
@@ -1451,7 +1513,8 @@ CONTAINS
                E, D, T, Ye, Ym, Mumu, &
                Mun, Mn_eff, Un, &
                Mup, Mp_eff, Up, &
-               opEC )
+               opEC, &
+             OpacityMask_Option = OpacityMask_Option )
 
     ELSE IF ( EmAb_Muon_Method == 3 ) THEN
 
@@ -1460,19 +1523,49 @@ CONTAINS
                E, D, T, Ye, Ym, Mumu, &
                Mun, Mn_eff, Un, &
                Mup, Mp_eff, Up, &
-               opEC )
+               opEC, &
+             OpacityMask_Option = OpacityMask_Option )
 
     END IF
 
+    ! --- The weaklib kernels return the absorptivity only. Convert to the ---
+    ! --- stimulated-absorption opacity chi* = chi_a / ( 1 - f0 ) expected ---
+    ! --- by the solver, which builds emission as chi* * f0.               ---
+
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP PRIVATE( kT )
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC PRIVATE( kT ) &
+    !$ACC PRESENT( E, T, Munum, opEC )
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO COLLAPSE(2) &
+    !$OMP PRIVATE( kT )
+#endif
+    DO iX = iX_B, iX_E
+    DO iE = iE_B, iE_E
+
+      kT = BoltzmannConstant * T(iX)
+
+      opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) &
+        * StimulatedAbsorptionFactor( E(iE), + Munum(iX), kT )
+      opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) &
+        * StimulatedAbsorptionFactor( E(iE), - Munum(iX), kT )
+
+    END DO
+    END DO
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu )
+    !$OMP MAP( release: Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu, Munum )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu )
+    !$ACC DELETE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mumu, Munum )
 #endif
 
     DEALLOCATE( Mumu   )
+    DEALLOCATE( Munum  )
     DEALLOCATE( Mun    )
     DEALLOCATE( Mn_eff )
     DEALLOCATE( Un     )
@@ -1485,7 +1578,8 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_Elastic &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, &
-      Mumu, Mun, Mn_eff, Un, Mup, Mp_eff, Up, opEC )
+      Mumu, Mun, Mn_eff, Un, Mup, Mp_eff, Up, opEC, &
+      OpacityMask_Option )
 
     ! --- Muon Capture Opacities (Multiple D,T,Y) ---
 
@@ -1517,6 +1611,12 @@ CONTAINS
     REAL(DP) :: WeakMagRecNuLep
     REAL(DP) :: WeakMagRecNuLepBar
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
     ALLOCATE( Xn(iX_B:iX_E) )
     ALLOCATE( Xp(iX_B:iX_E) )
 
@@ -1533,10 +1633,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP MAP( to: LocalOpacityMask ) &
     !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
     !$OMP PRIVATE( E_P, D_P, T_P, Ym_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC PRIVATE( Mun_P, Mup_P, Mumu_P ) &
     !$ACC PRIVATE( E_P, D_P, T_P, Ym_P, WeakMagRecNuLep, WeakMagRecNuLepBar )
 #elif defined(THORNADO_OMP)
@@ -1547,7 +1649,7 @@ CONTAINS
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
 
-      IF ( QueryOpacity_EmAb_Muon( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_EmAb_Muon,iX) ) THEN
 
         E_P  = E(iE)  / UnitE
         D_P  = D(iX)  / UnitD
@@ -1595,7 +1697,8 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_2D &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, &
-      Mumu, Mun, Mn_eff, Un, Mup, Mp_eff, Up, opEC )
+      Mumu, Mun, Mn_eff, Un, Mup, Mp_eff, Up, opEC, &
+      OpacityMask_Option )
 
     ! --- Muon Capture Opacities (Multiple D,T,Y) ---
 
@@ -1623,12 +1726,20 @@ CONTAINS
     REAL(DP) :: Mun_P, Mn_eff_P, Un_P
     REAL(DP) :: Mup_P, Mp_eff_P, Up_P
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP MAP( to: LocalOpacityMask ) &
     !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
     !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC PRIVATE( Mun_P, Mup_P, Mumu_P ) &
     !$ACC PRIVATE( E_P, D_P, T_P, Ym_P )
 #elif defined(THORNADO_OMP)
@@ -1639,7 +1750,7 @@ CONTAINS
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
 
-      IF ( QueryOpacity_EmAb_Muon( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_EmAb_Muon,iX) ) THEN
 
         E_P  = E(iE)  / UnitE
         D_P  = D(iX)  / UnitD
@@ -1653,11 +1764,11 @@ CONTAINS
         CALL Opacity_CC_2D &
             ( corr_num, 1, E_P, opEC(iE,iNuM,iX), &
               T_P, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
+              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
         CALL Opacity_CC_2D &
             ( corr_num, 2, E_P, opEC(iE,iNuM_Bar,iX), &
               T_P, Mumu_P, Mun_P, Mup_P,  &
-              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
+              mmu, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
 
         opEC(iE,iNuM    ,iX) = opEC(iE,iNuM    ,iX) * UnitEC
         opEC(iE,iNuM_Bar,iX) = opEC(iE,iNuM_Bar,iX) * UnitEC
@@ -1675,7 +1786,8 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_2D
 
   SUBROUTINE ComputeNeutrinoOpacities_IND &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, opIND )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, opIND, &
+      OpacityMask_Option )
 
     ! — Inverse Neutron Decay (Multiple D,T,Y) ---
 
@@ -1692,15 +1804,24 @@ CONTAINS
     REAL(DP) :: E_P, D_P, T_P, Ye_P, Ym_P, Mue_P, Mun_P, Mup_p
     INTEGER  :: iE, iS, iX
 
-    REAL(DP), ALLOCATABLE :: Mue(:)
+    REAL(DP) :: kT
+    REAL(DP), ALLOCATABLE :: Mue(:), Munue(:)
     REAL(DP), ALLOCATABLE :: Mun(:), Mn_eff(:), Un(:)
     REAL(DP), ALLOCATABLE :: Mup(:), Mp_eff(:), Up(:)
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
 #ifndef EOSMODE_COMPOSE
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( to: LocalOpacityMask )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC COPYIN( LocalOpacityMask )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -1715,6 +1836,7 @@ CONTAINS
 #endif
 
     ALLOCATE( Mue   (iX_B:iX_E) )
+    ALLOCATE( Munue (iX_B:iX_E) )
     ALLOCATE( Mun   (iX_B:iX_E) )
     ALLOCATE( Mn_eff(iX_B:iX_E) )
     ALLOCATE( Un    (iX_B:iX_E) )
@@ -1724,13 +1846,19 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET ENTER DATA &
-    !$OMP MAP( alloc: Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mue )
+    !$OMP MAP( alloc: Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mue, Munue )
 #elif defined(THORNADO_OACC)
     !$ACC ENTER DATA  &
-    !$ACC CREATE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mue )
+    !$ACC CREATE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mue, Munue )
 #endif
 
     CALL ComputeElectronChemicalPotential_TABLE( D, T, Ye, Ym, Mue )
+
+    ! --- Same electron-neutrino chemical potential as the equilibrium distribution ---
+
+    CALL ComputeElectronNeutrinoChemicalPotential_TABLE &
+           ( D, T, Ye, Ym, Munue, &
+             ChargedCurrentMask_Option = ElectronNeutrinoMuMask( LocalOpacityMask ) )
     CALL ComputeNeutronChemicalPotential_TABLE ( D, T, Ye, Ym, Mun )
     CALL ComputeNeutronEffectiveMass_TABLE     ( D, T, Ye, Ym, Mn_eff )
     CALL ComputeNeutronSelfEnergy_TABLE        ( D, T, Ye, Ym, Un )
@@ -1740,21 +1868,23 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
-    !$OMP PRIVATE( Mun_P, Mup_P, Mue_P ) &
+    !$OMP MAP( to: LocalOpacityMask ) &
+    !$OMP PRIVATE( Mun_P, Mup_P, Mue_P, kT ) &
     !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
-    !$ACC PRIVATE( Mun_P, Mup_P, Meu_P ) &
+    !$ACC COPYIN( LocalOpacityMask ) &
+    !$ACC PRIVATE( Mun_P, Mup_P, Mue_P, kT ) &
     !$ACC PRIVATE( E_P, D_P, T_P, Ym_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(2) &
-    !$OMP PRIVATE( Mun_P, Mup_P, Mue_P ) &
+    !$OMP PRIVATE( Mun_P, Mup_P, Mue_P, kT ) &
     !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
 #endif
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
 
-      IF ( QueryOpacity_EmAb_Muon( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_EmAb_Electron,iX) ) THEN
 
         E_P  = E(iE)  / UnitE
         D_P  = D(iX)  / UnitD
@@ -1768,9 +1898,14 @@ CONTAINS
         CALL Opacity_CC_2D &
             ( corr_num, 3, E_P, opIND(iE,iNuE_Bar,iX), &
               T_P, Mue_P, Mun_P, Mup_P,  &
-              me, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX), nE_Muon_2D )
+              me, Mn_eff(iX), Mp_eff(iX), Un(iX), Up(iX) )
 
-        opIND(iE,iNuE_Bar,iX) = opIND(iE,iNuE_Bar,iX) * UnitEC
+        ! --- Absorptivity -> stimulated-absorption opacity chi_a / ( 1 - f0 ) ---
+
+        kT = BoltzmannConstant * T(iX)
+
+        opIND(iE,iNuE_Bar,iX) = opIND(iE,iNuE_Bar,iX) * UnitEC &
+          * StimulatedAbsorptionFactor( E(iE), - Munue(iX), kT )
 
       ELSE
 
@@ -1783,13 +1918,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET EXIT DATA &
-    !$OMP MAP( release: Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mue )
+    !$OMP MAP( release: Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mue, Munue )
 #elif defined(THORNADO_OACC)
     !$ACC EXIT DATA &
-    !$ACC DELETE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mue )
+    !$ACC DELETE( Mun, Mn_eff, Un, Mup, Mp_eff, Up, Mue, Munue )
 #endif
 
     DEALLOCATE( Mue    )
+    DEALLOCATE( Munue  )
     DEALLOCATE( Mun    )
     DEALLOCATE( Mn_eff )
     DEALLOCATE( Un     )
@@ -1797,12 +1933,13 @@ CONTAINS
     DEALLOCATE( Mp_eff )
     DEALLOCATE( Up     )
 
-  END SUBROUTINE ComputeNeutrinoOpacities_IND  
+  END SUBROUTINE ComputeNeutrinoOpacities_IND
 
 
   SUBROUTINE ComputeNeutrinoOpacities_EC_NuM_Nucleons_4D &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, E, D, T, Ye, Ym, &
-      Mumu, Mun, Mn_eff, Un, Mup, Mp_eff, Up, opEC )
+      Mumu, Mun, Mn_eff, Un, Mup, Mp_eff, Up, opEC, &
+      OpacityMask_Option )
 
     ! --- Muon Capture Opacities (Multiple D,T,Y) ---
 
@@ -1830,12 +1967,20 @@ CONTAINS
     REAL(DP) :: Mun_P, Mn_eff_P, Un_P
     REAL(DP) :: Mup_P, Mp_eff_P, Up_P
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
 #ifndef CC_INTEGRALS_4D
 
 #if defined(THORNADO_OMP_OL)
-    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( to: LocalOpacityMask )
 #elif defined(THORNADO_OACC)
-    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3)
+    !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC COPYIN( LocalOpacityMask )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
 #endif
@@ -1852,10 +1997,12 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+    !$OMP MAP( to: LocalOpacityMask ) &
     !$OMP PRIVATE( Mun_P, Mup_P, Mumu_P ) &
     !$OMP PRIVATE( E_P, D_P, T_P, Ym_P )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC PRIVATE( Mun_P, Mup_P, Mumu_P ) &
     !$ACC PRIVATE( E_P, D_P, T_P, Ym_P )
 #elif defined(THORNADO_OMP)
@@ -1866,7 +2013,7 @@ CONTAINS
     DO iX = iX_B, iX_E
     DO iE = iE_B, iE_E
 
-      IF ( QueryOpacity_EmAb_Muon( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_EmAb_Muon,iX) ) THEN
 
         E_P  = E(iE)  / UnitE
         D_P  = D(iX)  / UnitD
@@ -2010,7 +2157,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacities_ES &
-    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Ye, Ym, iMoment, opES )
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Ye, Ym, iMoment, opES, &
+      OpacityMask_Option )
 
     ! --- Elastic Scattering Opacities (Multiple D,T,Y) ---
 
@@ -2027,6 +2175,12 @@ CONTAINS
     REAL(DP) :: LogE_P, LogD_P, LogT_P, Yp_P
     INTEGER  :: iX, iE, iC
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
 #ifdef MICROPHYSICS_WEAKLIB
 
 #if defined(THORNADO_OMP_OL)
@@ -2041,12 +2195,14 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P ) 
+    !$OMP MAP( to: LocalOpacityMask ) &
+    !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC PRESENT( LogEs_T, LogDs_T, LogTs_T, Ys_T, &
     !$ACC          OS_Iso, Iso_T ) &
-    !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P ) 
+    !$ACC PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3) &
     !$OMP PRIVATE( LogE_P, LogD_P, LogT_P, Yp_P )
@@ -2055,7 +2211,7 @@ CONTAINS
     DO iC = iNu,  iNu_Bar
     DO iE = iE_B, iE_E
 
-      IF ( QueryOpacity_Iso( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_Iso,iX) ) THEN
 
         LogE_P = LOG10( E(iE) / UnitE )
 
@@ -2094,9 +2250,11 @@ CONTAINS
 
 #if defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( to: LocalOpacityMask ) &
     !$OMP MAP( from: opES )
 #elif defined(THORNADO_OACC)
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC COPYOUT( opES )
 #elif defined(THORNADO_OMP)
     !$OMP PARALLEL DO COLLAPSE(3)
@@ -2313,7 +2471,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_NES &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, H_I, H_II, Eta, Chi )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, H_I, H_II, Eta, Chi, &
+      OpacityMask_Option )
 
     ! --- Neutrino-Electron Scattering Rates (Multiple J) ---
 
@@ -2333,13 +2492,21 @@ CONTAINS
     REAL(DP) :: SUM1, SUM2
     INTEGER  :: iE1, iE2, iS, iX
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( to: LocalOpacityMask ) &
     !$OMP PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out ) &
     !$OMP MAP( to: H_I, H_II, W2, J, J0, D ) &
     !$OMP MAP( from: Eta, Chi )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC PRIVATE( SUM1, SUM2, DetBal, Phi_In, Phi_Out ) &
     !$ACC COPYIN( H_I, H_II, W2, J, J0, D ) &
     !$ACC COPYOUT( Eta, Chi ) &
@@ -2355,7 +2522,7 @@ CONTAINS
       SUM1 = Zero
       SUM2 = Zero
 
-      IF ( QueryOpacity_NES( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_NES,iX) ) THEN
 
         DO iE1 = iE_B, iE_E
 
@@ -2391,7 +2558,8 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_NES &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, H_1, H_2, H_3, J0, &
-      H_I_1, H_II_1, L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3 )
+      H_I_1, H_II_1, L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3, &
+      OpacityMask_Option )
 
     ! --- Neutrino-Electron Scattering Rates (Linear Corrections) ---
 
@@ -2417,14 +2585,22 @@ CONTAINS
     REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
     INTEGER  :: iE1, iE2, iS, iX
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( to: LocalOpacityMask ) &
     !$OMP PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$OMP          Phi_1_In, Phi_1_Out ) &
     !$OMP MAP( to: H_I_1, H_II_1, W2, H_1, H_2, H_3, J0, D ) &
     !$OMP MAP( from: L_In_1, L_In_2, L_In_3, L_Out_1, L_Out_2, L_Out_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC PRIVATE( SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$ACC          Phi_1_In, Phi_1_Out ) &
     !$ACC COPYIN( H_I_1, H_II_1, W2, H_1, H_2, H_3, J0, D ) &
@@ -2446,7 +2622,7 @@ CONTAINS
       SUM5 = Zero
       SUM6 = Zero
 
-      IF ( QueryOpacity_NES( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_NES,iX) ) THEN
 
         DO iE1 = iE_B, iE_E
 
@@ -2488,7 +2664,8 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_NES
 
   SUBROUTINE ComputeNeutrinoOpacities_Muon &
-    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Ye, Ym, Phi_0_MuonOpac )
+    ( iE_B, iE_E, iX_B, iX_E, E, D, T, Ye, Ym, Phi_0_MuonOpac, &
+      OpacityMask_Option )
 
     ! — Calculate PhOut for NES and NMS  ---
 
@@ -2504,10 +2681,16 @@ CONTAINS
     REAL(DP), ALLOCATABLE :: Phout(:,:,:,:,:)
     REAL(DP), ALLOCATABLE :: Mue(:), Mumu(:)
     REAL(DP) :: Mue_P, Mumu_P
-    
+
     REAL(DP) :: E1_P, E3_P, D_P, T_P, Ye_P, Ym_P
 
     INTEGER  :: iE1, iE3, iX, iP
+
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
 
 #ifdef MICROPHYSICS_WEAKLIB
 
@@ -2529,20 +2712,28 @@ CONTAINS
 
 #if defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
-    !$OMP PRIVATE( E1_P, E3_P, T_P, Mue_P, Mumu_P )
+    !$OMP PRIVATE( E1_P, E3_P, T_P, Mue_P, Mumu_P, iP ) &
+    !$OMP MAP( to: LocalOpacityMask )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
-    !$ACC PRIVATE( E1_P, E3_P, T_P, Mue_P, Mumu_P )
+    !$ACC PRIVATE( E1_P, E3_P, T_P, Mue_P, Mumu_P, iP ) &
+    !$ACC COPYIN( LocalOpacityMask )
 #elif defined( THORNADO_OMP    )
     !$OMP PARALLEL DO COLLAPSE(3) &
-    !$OMP PRIVATE( E1_P, E3_P, T_P, Mue_P, Mumu_P )
+    !$OMP PRIVATE( E1_P, E3_P, T_P, Mue_P, Mumu_P, iP )
 #endif
     DO iX = iX_B, iX_E
-	  DO iE3 = iE_B, iE_E    
+	  DO iE3 = iE_B, iE_E
     DO iE1 = iE_B, iE_E !iE1
-    
+
+      IF( .NOT. ANY(LocalOpacityMask(iOp_NES:iOp_NES,iX)) .AND. &
+          .NOT. ANY(LocalOpacityMask(iOp_NMS:iOp_IMD,iX)) )THEN
+        Phi_0_MuonOpac(iE1,iE3,iX,:) = Zero
+        CYCLE
+      END IF
+
       IF ( MAXVAL(iProcessList_MuonOpac) .gt. 24 .or. iE3 <= iE1) THEN
- 
+
         E1_P  = E(iE1)  / MeV
         E3_P  = E(iE3) / MeV
         T_P   = T(iX)  / UnitT * kmev
@@ -2551,13 +2742,17 @@ CONTAINS
 
         CALL CalculateAllPhout( iE1, iE3, E1_P, E3_P, T_P, Mue_P, Mumu_P,Phout(iE1, iE3, iX, :, :), 1 )
         Phi_0_MuonOpac(iE1, iE3, iX, :) = Phout(iE1, iE3, iX, :, 1)
+        DO iP=1,nProcess_MuonOpac
+          IF( .NOT. GeneralProcessActive(iProcessList_MuonOpac(iP),LocalOpacityMask(:,iX)) ) &
+            Phi_0_MuonOpac(iE1,iE3,iX,iP)=Zero
+        END DO
 
       ELSE
 
         Phi_0_MuonOpac(iE1, iE3, iX, :) = Zero
 
       END IF
-    
+
     END DO
     END DO
     END DO
@@ -2597,10 +2792,11 @@ CONTAINS
 
 #endif
 
-  END SUBROUTINE ComputeNeutrinoOpacities_Muon 
+  END SUBROUTINE ComputeNeutrinoOpacities_Muon
 
   SUBROUTINE ComputeNeutrinoOpacityRates_MuonNLS &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, Phi_0_MuonOpac, Eta, Chi )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, Phi_0_MuonOpac, Eta, Chi, &
+      OpacityMask_Option )
 
     ! --- NLS Scattering (Multiple D,T,Y) ---
 
@@ -2620,21 +2816,27 @@ CONTAINS
     INTEGER  :: iE1, iE3, iS, iX, iProcess, ProcessIndex
     LOGICAL  :: NES_On, Mu_On
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
     DO iX = iX_B, iX_E
-	  DO iS = iS_B, iS_E    
+	  DO iS = iS_B, iS_E
     DO iE1 = iE_B, iE_E
       Eta(iE1,iS,iX) = Zero
       Chi(iE1,iS,iX) = Zero
-    END DO 
+    END DO
     END DO
     END DO
 
-    DO iX = iX_B, iX_E  
+    DO iX = iX_B, iX_E
     DO iS = iS_B, iS_E
     DO iE1 = iE_B, iE_E
 
-      NES_On = QueryOpacity_NES      ( D(iX) / UnitD )
-      Mu_On  = QueryOpacity_EmAb_Muon( D(iX) / UnitD )
+      NES_On = LocalOpacityMask(iOp_NES,iX)
+      Mu_On  = LocalOpacityMask(iOp_NMS,iX)
 
       SUM1 = Zero
       SUM2 = Zero
@@ -2648,7 +2850,7 @@ CONTAINS
         IF ( MOD( ProcessIndex - 1, 12 ) / 2 + 1 /= iS ) CYCLE
 
         ! Same gating as before
-        IF ( .NOT. ( ( ProcessIndex < 13 .AND. NES_On ) .OR. Mu_On ) ) CYCLE
+        IF ( .NOT. ( ( ProcessIndex < 13 .AND. NES_On ) .OR. ( ProcessIndex >= 13 .AND. Mu_On ) ) ) CYCLE
 
         DO iE3 = iE_B, iE_E
 
@@ -2681,7 +2883,8 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacityRates_MuonNLS
 
   SUBROUTINE ComputeNeutrinoOpacityRates_MuonLFEC &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, Phi_0_MuonOpac, Eta, Chi )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, Phi_0_MuonOpac, Eta, Chi, &
+      OpacityMask_Option )
 
     ! --- LFE and LFC (Multiple D,T,Y) ---
 
@@ -2701,20 +2904,26 @@ CONTAINS
     INTEGER  :: iE1, iE3, iS1, iS3, iX, iProcess, ProcessIndex
     LOGICAL  :: Mu_On
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
     DO iX = iX_B, iX_E
-	  DO iS1 = iS_B, iS_E    
+	  DO iS1 = iS_B, iS_E
     DO iE1 = iE_B, iE_E
       Eta(iE1,iS1,iX) = Zero
       Chi(iE1,iS1,iX) = Zero
-    END DO 
+    END DO
     END DO
     END DO
 
-    DO iX = iX_B, iX_E  
+    DO iX = iX_B, iX_E
     DO iS1  = iS_B, iS_E
     DO iE1 = iE_B, iE_E
 
-      Mu_On = QueryOpacity_EmAb_Muon( D(iX) / UnitD )
+      Mu_On = LocalOpacityMask(iOp_LFE,iX) .OR. LocalOpacityMask(iOp_LFC,iX)
       IF ( .NOT. Mu_On ) CYCLE
 
       SUM1 = Zero
@@ -2725,6 +2934,7 @@ CONTAINS
         ProcessIndex = iProcessList_MuonOpac(iProcess)
 
         IF ( ProcessIndex < 25 .OR. ProcessIndex > 32 ) CYCLE
+        IF( .NOT. GeneralProcessActive(ProcessIndex,LocalOpacityMask(:,iX)) ) CYCLE
 
         ! Skip processes that don't update this species; set the partner species
         SELECT CASE( ProcessIndex )
@@ -2756,10 +2966,11 @@ CONTAINS
     END DO ! iS
     END DO ! iX
 
-  END SUBROUTINE ComputeNeutrinoOpacityRates_MuonLFEC 
+  END SUBROUTINE ComputeNeutrinoOpacityRates_MuonLFEC
 
   SUBROUTINE ComputeNeutrinoOpacityRates_MuonIMD &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, Phi_0_MuonOpac, Eta, Chi )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, Phi_0_MuonOpac, Eta, Chi, &
+      OpacityMask_Option )
 
     ! --- IMD (Multiple D,T,Y) ---
 
@@ -2779,20 +2990,26 @@ CONTAINS
     INTEGER  :: iE1, iE3, iS1, iS3, iX, iProcess, ProcessIndex
     LOGICAL  :: Mu_On
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
     DO iX = iX_B, iX_E
-	  DO iS1 = iS_B, iS_E    
+	  DO iS1 = iS_B, iS_E
     DO iE1 = iE_B, iE_E
       Eta(iE1,iS1,iX) = Zero
       Chi(iE1,iS1,iX) = Zero
-    END DO 
+    END DO
     END DO
     END DO
 
-    DO iX = iX_B, iX_E  
+    DO iX = iX_B, iX_E
     DO iS1 = iS_B, iS_E
     DO iE1 = iE_B, iE_E
 
-      Mu_On = QueryOpacity_EmAb_Muon( D(iX) / UnitD )
+      Mu_On = LocalOpacityMask(iOp_IMD,iX)
       IF ( .NOT. Mu_On ) CYCLE
 
       SUM1 = Zero
@@ -2815,7 +3032,10 @@ CONTAINS
           DetBal =   ( J0(iE1,iS1,iX) * J0(iE3,iS3,iX) ) &
                     / ( ( One - J0(iE1,iS1,iX) ) * ( One - J0(iE3,iS3,iX) ) )
 
-          Phi_In = Phi_0_MuonOpac(iE3, iE1, iX, iProcess) * UnitNES
+          ! --- weaklib: Phout(E1,E3) of process 33 (34) is the absorption
+          ! --- kernel of nuebar (numu) at E1 with the partner at E3
+
+          Phi_In = Phi_0_MuonOpac(iE1, iE3, iX, iProcess) * UnitNES
           Phi_Out  = Phi_In * DetBal 
 
           SUM1 = SUM1 + Phi_Out * W2(iE3) * ( One - J(iE3,iS3,iX) )
@@ -3070,7 +3290,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_Pair &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, J_I, J_II, Eta, Chi )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, J_I, J_II, Eta, Chi, &
+      OpacityMask_Option )
 
     ! --- Pair Rates (Multiple J) ---
 
@@ -3090,13 +3311,21 @@ CONTAINS
     REAL(DP) :: SUM1, SUM2
     INTEGER  :: iX, iE1, iE2, iS, iS_A
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( to: LocalOpacityMask ) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann ) &
     !$OMP MAP( to: J_I, J_II, W2, J, J0, D ) &
     !$OMP MAP( from: Eta, Chi )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann ) &
     !$ACC COPYIN( J_I, J_II, W2, J, J0, D ) &
     !$ACC COPYOUT( Eta, Chi ) &
@@ -3115,7 +3344,7 @@ CONTAINS
       SUM1 = Zero
       SUM2 = Zero
 
-      IF ( QueryOpacity_Pair( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_Pair,iX) ) THEN
 
         DO iE1 = iE_B, iE_E
 
@@ -3149,7 +3378,8 @@ CONTAINS
 
 
   SUBROUTINE ComputeNeutrinoOpacityRates_NuPair &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, J_I, J_II, Eta, Chi )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, J_I, J_II, Eta, Chi, &
+      OpacityMask_Option )
 
     ! --- Pair Rates (Multiple J) ---
 
@@ -3169,13 +3399,21 @@ CONTAINS
     REAL(DP) :: SUM1, SUM2
     INTEGER  :: iX, iE1, iE2, iS, iS_A
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( to: LocalOpacityMask ) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann ) &
     !$OMP MAP( to: J_I, J_II, W2, J, J0, D ) &
     !$OMP MAP( from: Eta, Chi )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Pro, Phi_0_Ann ) &
     !$ACC COPYIN( J_I, J_II, W2, J, J0, D ) &
     !$ACC COPYOUT( Eta, Chi ) &
@@ -3194,7 +3432,7 @@ CONTAINS
         SUM1 = Zero
         SUM2 = Zero
 
-        IF ( QueryOpacity_NuPair( D(iX) / UnitD ) ) THEN
+        IF ( LocalOpacityMask(iOp_NuPair,iX) ) THEN
 
           DO iE1 = iE_B, iE_E
 
@@ -3229,7 +3467,8 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_Pair &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, H_1, H_2, H_3, J0, &
-      J_I_1, J_II_1, L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
+      J_I_1, J_II_1, L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3, &
+      OpacityMask_Option )
 
     ! --- e^+ e^- Pair Rates (Linear Corrections) ---
 
@@ -3255,14 +3494,22 @@ CONTAINS
     REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
     INTEGER  :: iE1, iE2, iS, iS_A, iX
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( to: LocalOpacityMask ) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$OMP          Phi_1_Pro, Phi_1_Ann ) &
     !$OMP MAP( to: J_I_1, J_II_1, W2, H_1, H_2, H_3, J0, D ) &
     !$OMP MAP( from: L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$ACC          Phi_1_Pro, Phi_1_Ann ) &
     !$ACC COPYIN( J_I_1, J_II_1, W2, H_1, H_2, H_3, J0, D ) &
@@ -3287,7 +3534,7 @@ CONTAINS
       SUM5 = Zero
       SUM6 = Zero
 
-      IF ( QueryOpacity_Pair( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_Pair,iX) ) THEN
 
         DO iE1 = iE_B, iE_E
 
@@ -3424,9 +3671,10 @@ CONTAINS
 
   END SUBROUTINE ComputeNeutrinoOpacities_Brem
 
-  
+
   SUBROUTINE ComputeNeutrinoOpacityRates_Brem &
-    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, S_Sigma, Eta, Chi )
+    ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, J, J0, S_Sigma, Eta, Chi, &
+      OpacityMask_Option )
 
     ! --- Brem Rates (Multiple J) ---
 
@@ -3450,13 +3698,21 @@ CONTAINS
     REAL(DP), PARAMETER :: D_0 = 2.656862401594383d14
     REAL(DP)            :: medium_fac
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( to: LocalOpacityMask ) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro, medium_fac ) &
     !$OMP MAP( to: S_Sigma, W2, J, J0, D ) &
     !$OMP MAP( from: Eta, Chi )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, DetBal, Phi_0_Ann, Phi_0_Pro, medium_fac ) &
     !$ACC COPYIN( S_Sigma, W2, J, J0, D ) &
     !$ACC COPYOUT( Eta, Chi )
@@ -3479,7 +3735,7 @@ CONTAINS
       !Set it to one to switch off
       medium_fac = 1.0d0
 
-      IF ( QueryOpacity_Brem( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_Brem,iX) ) THEN
 
         DO iE1 = iE_B, iE_E
 
@@ -3512,7 +3768,8 @@ CONTAINS
 
   SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_Brem &
     ( iE_B, iE_E, iS_B, iS_E, iX_B, iX_E, D, W2, H_1, H_2, H_3, J0, &
-      S_Sigma, L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
+      S_Sigma, L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3, &
+      OpacityMask_Option )
 
     ! --- N N Brem Rates (Linear Corrections) ---
 
@@ -3537,14 +3794,22 @@ CONTAINS
     REAL(DP) :: SUM1, SUM2, SUM3, SUM4, SUM5, SUM6
     INTEGER  :: iE1, iE2, iS, iS_A, iX
 
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    LOGICAL :: LocalOpacityMask(nOp,iX_B:iX_E)
+
+    CALL ResolveOpacityMask &
+           ( iX_B, iX_E, D, LocalOpacityMask, OpacityMask_Option )
+
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(3) &
+    !$OMP MAP( to: LocalOpacityMask ) &
     !$OMP PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$OMP          Phi_1_Pro, Phi_1_Ann ) &
     !$OMP MAP( to: S_Sigma, W2, H_1, H_2, H_3, J0, D ) &
     !$OMP MAP( from: L_Pro_1, L_Pro_2, L_Pro_3, L_Ann_1, L_Ann_2, L_Ann_3 )
 #elif defined( THORNADO_OACC   )
     !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(3) &
+    !$ACC COPYIN( LocalOpacityMask ) &
     !$ACC PRIVATE( iS_A, SUM1, SUM2, SUM3, SUM4, SUM5, SUM6, DetBal, &
     !$ACC          Phi_1_Pro, Phi_1_Ann ) &
     !$ACC COPYIN( S_Sigma, W2, H_1, H_2, H_3, J0, D ) &
@@ -3568,7 +3833,7 @@ CONTAINS
       SUM5 = Zero
       SUM6 = Zero
 
-      IF ( QueryOpacity_Brem( D(iX) / UnitD ) ) THEN
+      IF ( LocalOpacityMask(iOp_Brem,iX) ) THEN
 
         DO iE1 = iE_B, iE_E
 
@@ -3607,6 +3872,58 @@ CONTAINS
   END SUBROUTINE ComputeNeutrinoOpacityRates_LinearCorrections_Brem
 
   
+  FUNCTION StimulatedAbsorptionFactor( E, Mu, kT ) RESULT( StimFactor )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+
+    ! --- 1 / ( 1 - f0 ) = 1 + exp( - ( E - Mu ) / kT ) ---
+
+    REAL(DP), INTENT(in) :: E, Mu, kT
+    REAL(DP) :: StimFactor
+
+    REAL(DP) :: Exponent
+
+    Exponent = MIN( MAX( ( Mu - E ) / kT, - Log1d100 ), + Log1d100 )
+
+    StimFactor = One + EXP( Exponent )
+
+    RETURN
+  END FUNCTION StimulatedAbsorptionFactor
+
+
+  FUNCTION ElectronNeutrinoMuMask( OpacityMask ) RESULT( Mask )
+
+    ! --- Where the electron-neutrino chemical potential is needed: charged-
+    ! --- current EmAb, and the leptonic flavour-changing kernels whose
+    ! --- detailed balance depends on it
+
+    LOGICAL, INTENT(in) :: OpacityMask(:,:)
+    LOGICAL :: Mask(SIZE(OpacityMask,2))
+
+    Mask =      OpacityMask(iOp_EmAb_Electron,:) .OR. OpacityMask(iOp_ECTable,:) &
+           .OR. OpacityMask(iOp_LFE,:) .OR. OpacityMask(iOp_LFC,:) &
+           .OR. OpacityMask(iOp_IMD,:)
+
+  END FUNCTION ElectronNeutrinoMuMask
+
+
+  FUNCTION MuonNeutrinoMuMask( OpacityMask ) RESULT( Mask )
+
+    ! --- Same as ElectronNeutrinoMuMask, for the muon-neutrino chemical potential
+
+    LOGICAL, INTENT(in) :: OpacityMask(:,:)
+    LOGICAL :: Mask(SIZE(OpacityMask,2))
+
+    Mask =      OpacityMask(iOp_EmAb_Muon,:) &
+           .OR. OpacityMask(iOp_LFE,:) .OR. OpacityMask(iOp_LFC,:) &
+           .OR. OpacityMask(iOp_IMD,:)
+
+  END FUNCTION MuonNeutrinoMuMask
+
+
   FUNCTION FermiDirac_Scalar( E, Mu, kT ) RESULT( FermiDirac )
 #if defined(THORNADO_OMP_OL)
     !$OMP DECLARE TARGET
@@ -3741,4 +4058,161 @@ CONTAINS
   END FUNCTION dFermiDiracdY_Vector
 
 
+
+  SUBROUTINE SetOpacityMask( nX, nDOF_X, D, T, Ye, Ym, OpacityMask )
+    INTEGER, INTENT(in) :: nX, nDOF_X
+    REAL(DP), INTENT(in) :: D(nX), T(nX), Ye(nX), Ym(nX)
+    LOGICAL, INTENT(out) :: OpacityMask(nOp,nX)
+    REAL(DP) :: Ah(nX)
+    INTEGER :: iX, iNode, iFirst, iLast
+    LOGICAL :: Active
+    CALL DensityOpacityMask( nX, nDOF_X, D, OpacityMask )
+#ifdef MICROPHYSICS_WEAKLIB
+    IF( use_EC_table > 0 )THEN
+      CALL ComputeHeavyMassNumber_TABLE(D,T,Ye,Ym,Ah)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET DATA MAP(to:D,T,Ye,Ym,Ah) MAP(tofrom:OpacityMask)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+      !$ACC DATA COPYIN(D,T,Ye,Ym,Ah) COPY(OpacityMask)
+      !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO
+#endif
+      DO iX=1,nX
+        ! Retain the original electron-capture table's eligibility conditions.
+        OpacityMask(iOp_ECTable,iX)=OpacityMask(iOp_ECTable,iX) .AND. &
+          D(iX)/UnitD > Ds_EC_T(1) .AND. D(iX)/UnitD < Ds_EC_T(SIZE(Ds_EC_T)) .AND. &
+          T(iX)/UnitT > Ts_EC_T(1) .AND. T(iX)/UnitT < Ts_EC_T(SIZE(Ts_EC_T)) .AND. &
+          (Ye(iX)+Ym(iX))/UnitY > Ys_EC_T(1) .AND. (Ye(iX)+Ym(iX))/UnitY < Ys_EC_T(SIZE(Ys_EC_T)) .AND. &
+          Ah(iX) > 40.0_DP
+      END DO
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD PRIVATE(iLast,iNode,Active)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(iLast,iNode,Active)
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO PRIVATE(iLast,iNode,Active)
+#endif
+      DO iFirst=1,nX,nDOF_X
+        iLast=MIN(iFirst+nDOF_X-1,nX)
+        Active=.TRUE.
+        DO iNode=iFirst,iLast
+          Active=Active .AND. OpacityMask(iOp_ECTable,iNode)
+        END DO
+        OpacityMask(iOp_ECTable,iFirst:iLast)=Active
+      END DO
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET UPDATE FROM(OpacityMask)
+      !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+      !$ACC UPDATE SELF(OpacityMask)
+      !$ACC END DATA
+#endif
+    END IF
+#endif
+  END SUBROUTINE SetOpacityMask
+
+  SUBROUTINE ResolveOpacityMask( iX_B, iX_E, D, OpacityMask, OpacityMask_Option )
+    INTEGER, INTENT(in) :: iX_B, iX_E
+    REAL(DP), INTENT(in) :: D(iX_B:iX_E)
+    LOGICAL, INTENT(out) :: OpacityMask(nOp,iX_B:iX_E)
+    LOGICAL, INTENT(in), OPTIONAL :: OpacityMask_Option(:,iX_B:)
+    INTEGER :: iX, iOp
+    IF( PRESENT(OpacityMask_Option) )THEN
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2) &
+      !$OMP MAP(to:OpacityMask_Option) MAP(from:OpacityMask)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2) &
+      !$ACC COPYIN(OpacityMask_Option) COPYOUT(OpacityMask)
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(2)
+#endif
+      DO iX=iX_B,iX_E
+      DO iOp=1,nOp
+        OpacityMask(iOp,iX)=OpacityMask_Option(iOp,iX)
+      END DO
+      END DO
+    ELSE
+      CALL DensityOpacityMask( iX_E-iX_B+1, nDOFX, D, OpacityMask )
+    END IF
+  END SUBROUTINE ResolveOpacityMask
+
+  SUBROUTINE DensityOpacityMask( nX, nDOF_X, D, OpacityMask )
+    INTEGER, INTENT(in) :: nX, nDOF_X
+    REAL(DP), INTENT(in) :: D(nX)
+    LOGICAL, INTENT(out) :: OpacityMask(nOp,nX)
+    INTEGER :: iX, iNode, iOp, iFirst, iLast
+    LOGICAL :: Active
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET DATA MAP(to:D) MAP(from:OpacityMask)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
+#elif defined(THORNADO_OACC)
+    !$ACC DATA COPYIN(D) COPYOUT(OpacityMask)
+    !$ACC PARALLEL LOOP GANG VECTOR
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO
+#endif
+    DO iX=1,nX
+      OpacityMask(iOp_EmAb_Electron,iX) = QueryOpacity_EmAb_Nucleon(D(iX)/UnitD)
+      OpacityMask(iOp_EmAb_Muon,iX) = QueryOpacity_EmAb_Muon(D(iX)/UnitD)
+      OpacityMask(iOp_ECTable,iX) = QueryOpacity_EmAb_Nuclei(D(iX)/UnitD)
+      OpacityMask(iOp_Iso,iX) = QueryOpacity_Iso(D(iX)/UnitD)
+      OpacityMask(iOp_NES,iX) = QueryOpacity_NES(D(iX)/UnitD)
+      OpacityMask(iOp_Pair,iX) = QueryOpacity_Pair(D(iX)/UnitD)
+      OpacityMask(iOp_NuPair,iX) = QueryOpacity_NuPair(D(iX)/UnitD)
+      OpacityMask(iOp_Brem,iX) = QueryOpacity_Brem(D(iX)/UnitD)
+      OpacityMask(iOp_NMS,iX) = QueryOpacity_NMS(D(iX)/UnitD)
+      OpacityMask(iOp_LFE,iX) = QueryOpacity_LFE(D(iX)/UnitD)
+      OpacityMask(iOp_LFC,iX) = QueryOpacity_LFC(D(iX)/UnitD)
+      OpacityMask(iOp_IMD,iX) = QueryOpacity_IMD(D(iX)/UnitD)
+      OpacityMask(iOp_ECTable,iX) = OpacityMask(iOp_ECTable,iX) .AND. use_EC_table > 0
+    END DO
+    ! Require every node of an element to satisfy each process's window.
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD &
+    !$OMP PRIVATE(iLast,iNode,iOp,Active)
+#elif defined(THORNADO_OACC)
+    !$ACC PARALLEL LOOP GANG VECTOR PRIVATE(iLast,iNode,iOp,Active)
+#elif defined(THORNADO_OMP)
+    !$OMP PARALLEL DO PRIVATE(iLast,iNode,iOp,Active)
+#endif
+    DO iFirst=1,nX,nDOF_X
+      iLast=MIN(iFirst+nDOF_X-1,nX)
+      DO iOp=1,nOp
+        Active=.TRUE.
+        DO iNode=iFirst,iLast
+          Active=Active .AND. OpacityMask(iOp,iNode)
+        END DO
+        OpacityMask(iOp,iFirst:iLast)=Active
+      END DO
+    END DO
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE FROM(OpacityMask)
+    !$OMP END TARGET DATA
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE SELF(OpacityMask)
+    !$ACC END DATA
+#endif
+  END SUBROUTINE DensityOpacityMask
+
+
+  LOGICAL FUNCTION GeneralProcessActive( ProcessIndex, OpacityMask ) RESULT(Active)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    INTEGER, INTENT(in) :: ProcessIndex
+    LOGICAL, INTENT(in) :: OpacityMask(nOp)
+    Active=.FALSE.
+    SELECT CASE(ProcessIndex)
+    CASE(1:12);  Active=OpacityMask(iOp_NES)
+    CASE(13:24); Active=OpacityMask(iOp_NMS)
+    CASE(25:28); Active=OpacityMask(iOp_LFE)
+    CASE(29:32); Active=OpacityMask(iOp_LFC)
+    CASE(33:34); Active=OpacityMask(iOp_IMD)
+    END SELECT
+  END FUNCTION GeneralProcessActive
 END MODULE NeutrinoOpacitiesComputationModule

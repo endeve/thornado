@@ -72,12 +72,16 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
     ComputeTemperatureFromSpecificInternalEnergy_TABLE, &
     ComputeSpecificInternalEnergy_TABLE, &
     ComputePressure_TABLE, &
+    ComputeElectronChemicalPotential_TABLE, ComputeMuonChemicalPotential_TABLE, &
+    ComputeProtonChemicalPotential_TABLE, ComputeNeutronChemicalPotential_TABLE, &
     Min_D, Min_T, Min_Y
   USE OpacityModule_TABLE, ONLY: &
-    QueryOpacity, QueryOpacity_EmAb_Muon, & 
     nProcess_MuonOpac, iProcessList_MuonOpac, &
     Compute_IND
   USE NeutrinoOpacitiesComputationModule, ONLY: &
+    SetOpacityMask, nOp, iOp_EmAb_Electron, iOp_EmAb_Muon, iOp_ECTable, &
+    iOp_Iso, iOp_NES, iOp_Pair, iOp_NuPair, iOp_Brem, &
+    iOp_NMS, iOp_LFE, iOp_LFC, iOp_IMD, &
     ComputeEquilibriumDistributions, &
     LimitEquilibriumDistributions_DG, &
     ComputeNeutrinoOpacities_EC, &
@@ -238,7 +242,15 @@ MODULE TwoMoment_NeutrinoMatterSolverModule
   REAL(DP) :: Rtol_outer
   REAL(DP) :: Rtol_inner
   REAL(DP) :: Atol_inner
+  LOGICAL, ALLOCATABLE, TARGET :: Opacity_Mask(:,:), Opacity_Mask_T(:,:)
+  LOGICAL, ALLOCATABLE :: MatterSource_Mask(:,:)
+  PUBLIC :: QueryCollisionMask
   REAL(DP) :: wMatrRHS(nMatterEquations)
+#if defined(THORNADO_OMP_OL)
+  !$OMP DECLARE TARGET(MatterSource_Mask,wMatrRHS)
+#elif defined(THORNADO_OACC)
+  !$ACC DECLARE CREATE(MatterSource_Mask,wMatrRHS)
+#endif
   REAL(DP) :: DnuMax
   LOGICAL  :: FreezeOpacities
 
@@ -398,6 +410,8 @@ CONTAINS
     ALLOCATE( G_D    (nX_G) )
     ALLOCATE( U_D    (nX_G) )
 
+    ALLOCATE( Opacity_Mask(nOp,nX_G), Opacity_Mask_T(nOp,nX_G) )
+    ALLOCATE( MatterSource_Mask(nMatterEquations,nX_G) )
     ALLOCATE(         SqrtGm(              nX_G) )
     ALLOCATE(          Dnu_0(nE_G,nSpecies,nX_G) )
     ALLOCATE(      Sigma_Iso(nE_G,nChirals,nX_G) )
@@ -553,7 +567,7 @@ CONTAINS
     !$OMP             V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP             V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$OMP             V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
-    !$OMP             SqrtGm, &
+    !$OMP             SqrtGm, Opacity_Mask, Opacity_Mask_T, MatterSource_Mask, &
     !$OMP             Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP             Chi_EmAb, Eta_EmAb, &
     !$OMP             Chi_NES, Eta_NES, &
@@ -611,7 +625,7 @@ CONTAINS
     !$ACC         V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$ACC         V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
-    !$ACC         SqrtGm, &
+    !$ACC         SqrtGm, Opacity_Mask, Opacity_Mask_T, MatterSource_Mask, &
     !$ACC         Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
@@ -1054,7 +1068,7 @@ CONTAINS
     !$OMP               V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$OMP               V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$OMP               V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
-    !$OMP               SqrtGm, &
+    !$OMP               SqrtGm, Opacity_Mask, Opacity_Mask_T, MatterSource_Mask, &
     !$OMP               Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$OMP               Chi_EmAb, Eta_EmAb, &
     !$OMP               Chi_NES, Eta_NES, &
@@ -1112,7 +1126,7 @@ CONTAINS
     !$ACC         V_u_1_old, C_V_d_1, S_V_d_1, G_V_d_1, U_V_d_1, &
     !$ACC         V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2, &
     !$ACC         V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3, &
-    !$ACC         SqrtGm, &
+    !$ACC         SqrtGm, Opacity_Mask, Opacity_Mask_T, MatterSource_Mask, &
     !$ACC         Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso, &
     !$ACC         Chi_EmAb, Eta_EmAb, &
     !$ACC         Chi_NES, Eta_NES, &
@@ -1170,6 +1184,7 @@ CONTAINS
     DEALLOCATE( V_u_2_old, C_V_d_2, S_V_d_2, G_V_d_2, U_V_d_2 )
     DEALLOCATE( V_u_3_old, C_V_d_3, S_V_d_3, G_V_d_3, U_V_d_3 )
     DEALLOCATE( cD_old, D_old, C_D, S_D, G_D, U_D )
+    DEALLOCATE( Opacity_Mask, Opacity_Mask_T, MatterSource_Mask )
     DEALLOCATE( SqrtGm )
     DEALLOCATE( Dnu_0, Sigma_Iso, Phi_0_Iso, Phi_1_Iso )
     DEALLOCATE( Chi_EmAb, Eta_EmAb )
@@ -1340,6 +1355,14 @@ CONTAINS
     !$ACC   WORK_inner, TAU_inner, Alpha_inner )
 #endif
 
+    CALL SetOpacityMask( nX_G, PRODUCT(nNodesZ(2:4)), D, T, Ye, Ym, Opacity_Mask )
+    CALL SetMatterSourceMask
+#if defined(THORNADO_OMP_OL)
+    !$OMP TARGET UPDATE TO(Opacity_Mask,MatterSource_Mask)
+#elif defined(THORNADO_OACC)
+    !$ACC UPDATE DEVICE(Opacity_Mask,MatterSource_Mask)
+#endif
+
 #if   defined(THORNADO_OMP_OL)
     !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD
 #elif defined(THORNADO_OACC  )
@@ -1348,7 +1371,7 @@ CONTAINS
     !$OMP PARALLEL DO
 #endif
     DO iN_X = 1, nX_G
-      ITERATE_outer(iN_X) = QueryOpacity( D(iN_X) / Unit_D )
+      ITERATE_outer(iN_X) = ANY(MatterSource_Mask(:,iN_X))
     END DO
 #if   defined( THORNADO_OMP_OL )
     !$OMP TARGET UPDATE FROM( ITERATE_outer )
@@ -1743,6 +1766,9 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_IND_P
     REAL(DP), DIMENSION(:,:,:,:), POINTER :: Phi_0_MuonOpac_P
 
+    LOGICAL, POINTER :: OpacityMask_P(:,:)
+    INTEGER :: iMaskX, iMaskOp
+
     IF( PRESENT( nX_P ) )THEN
       nX = nX_P
     ELSE
@@ -1885,12 +1911,31 @@ CONTAINS
 
     END IF
 
+    IF( nX < nX_G )THEN
+      OpacityMask_P => Opacity_Mask_T(:,1:nX)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(2)
+#endif
+      DO iMaskX=1,nX
+      DO iMaskOp=1,nOp
+        OpacityMask_P(iMaskOp,iMaskX)=Opacity_Mask(iMaskOp,UnpackIndex(iMaskX))
+      END DO
+      END DO
+    ELSE
+      OpacityMask_P => Opacity_Mask
+    END IF
+
     ! --- Equilibrium Distributions ---
 
     CALL TimersStart( Timer_Opacity_D0 )
 
     CALL ComputeEquilibriumDistributions &
-           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_p, Dnu_0_P )
+           ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_p, Dnu_0_P, &
+             OpacityMask_Option = OpacityMask_P )
 
     CALL TimersStop( Timer_Opacity_D0 )
 
@@ -1907,7 +1952,8 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacities_EC &
            ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, Dnu_0_P, Chi_EmAb_P, &
-             T_old = T0_P, Ye_old = Ye0_P, Ym_old = Ym0_P )
+             T_old = T0_P, Ye_old = Ye0_P, Ym_old = Ym0_P, &
+             OpacityMask_Option = OpacityMask_P )
 
     CALL TimersStop( Timer_Opacity_EC )
 
@@ -1915,13 +1961,15 @@ CONTAINS
 
     CALL TimersStart( Timer_Opacity_ES )
 
-    CALL ComputeNeutrinoOpacities_ES & 
-           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, 1, Phi_0_Iso_P )
+    CALL ComputeNeutrinoOpacities_ES &
+           ( 1, nE_G, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, 1, Phi_0_Iso_P, &
+             OpacityMask_Option = OpacityMask_P )
 
 !!$    IF( Include_LinCorr )THEN
 
     CALL ComputeNeutrinoOpacities_ES &
-            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, 2, Phi_1_Iso_P )
+            ( 1, nE_G, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, 2, Phi_1_Iso_P, &
+             OpacityMask_Option = OpacityMask_P )
 
 !!$    END IF
 
@@ -1971,7 +2019,8 @@ CONTAINS
       CALL TimersStart( Timer_Opacity_Muon )
 
       CALL ComputeNeutrinoOpacities_Muon &
-             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, Phi_0_MuonOpac_P )
+             ( 1, nE_G, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, Phi_0_MuonOpac_P, &
+             OpacityMask_Option = OpacityMask_P )
 
       CALL TimersStop( Timer_Opacity_Muon )
 
@@ -1982,7 +2031,8 @@ CONTAINS
       CALL TimersStart( Timer_Opacity_IND )
 
       CALL ComputeNeutrinoOpacities_IND &
-        ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, Chi_IND_P )
+        ( 1, nE_G, 1, nSpecies, 1, nX, E_N, D_P, T_P, Ye_P, Ym_P, Chi_IND_P, &
+             OpacityMask_Option = OpacityMask_P )
 
       CALL TimersStop( Timer_Opacity_IND )
 
@@ -2127,6 +2177,9 @@ CONTAINS
     REAL(DP), DIMENSION(:,:,:), POINTER :: Chi_IMD_P, Eta_IMD_P
 
     INTEGER :: nX, nX0
+
+    LOGICAL, POINTER :: OpacityMask_P(:,:)
+    INTEGER :: iMaskX, iMaskOp
 
     IF ( PRESENT( nX_P ) ) THEN
       nX = nX_P
@@ -2306,13 +2359,32 @@ CONTAINS
 
     END IF
 
+    IF( nX < nX_G )THEN
+      OpacityMask_P => Opacity_Mask_T(:,1:nX)
+#if defined(THORNADO_OMP_OL)
+      !$OMP TARGET TEAMS DISTRIBUTE PARALLEL DO SIMD COLLAPSE(2)
+#elif defined(THORNADO_OACC)
+      !$ACC PARALLEL LOOP GANG VECTOR COLLAPSE(2)
+#elif defined(THORNADO_OMP)
+      !$OMP PARALLEL DO COLLAPSE(2)
+#endif
+      DO iMaskX=1,nX
+      DO iMaskOp=1,nOp
+        OpacityMask_P(iMaskOp,iMaskX)=Opacity_Mask(iMaskOp,UnpackIndex(iMaskX))
+      END DO
+      END DO
+    ELSE
+      OpacityMask_P => Opacity_Mask
+    END IF
+
     ! --- NES Emissivities and Opacities ---
 
     CALL TimersStart( Timer_OpacityRate_NES )
 
     CALL ComputeNeutrinoOpacityRates_NES &
            ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, H_I_0_P, H_II_0_P, &
-             Eta_NES_P, Chi_NES_P )
+             Eta_NES_P, Chi_NES_P, &
+             OpacityMask_Option = OpacityMask_P )
 
     IF( Include_LinCorr )THEN
 
@@ -2322,7 +2394,8 @@ CONTAINS
              ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
                Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, H_I_1_P, H_II_1_P, &
                L_NES__In__u_1_P, L_NES__In__u_2_P, L_NES__In__u_3_P, &
-               L_NES__Out_u_1_P, L_NES__Out_u_2_P, L_NES__Out_u_3_P )
+               L_NES__Out_u_1_P, L_NES__Out_u_2_P, L_NES__Out_u_3_P, &
+             OpacityMask_Option = OpacityMask_P )
 
     END IF
 
@@ -2335,23 +2408,26 @@ CONTAINS
 
       CALL ComputeNeutrinoOpacityRates_MuonNLS &
             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
-              Phi_0_MuonOpac_P, Eta_NLS_P, Chi_NLS_P )
-      
+              Phi_0_MuonOpac_P, Eta_NLS_P, Chi_NLS_P, &
+             OpacityMask_Option = OpacityMask_P )
+
       CALL TimersStop( Timer_OpacityRate_NLS )
 
       CALL TimersStart( Timer_OpacityRate_LFEC )
 
       CALL ComputeNeutrinoOpacityRates_MuonLFEC &
             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
-              Phi_0_MuonOpac_P, Eta_LFEC_P, Chi_LFEC_P )
+              Phi_0_MuonOpac_P, Eta_LFEC_P, Chi_LFEC_P, &
+             OpacityMask_Option = OpacityMask_P )
 
       CALL TimersStop( Timer_OpacityRate_LFEC )
 
       CALL TimersStart( Timer_OpacityRate_IMD )
-      
+
       CALL ComputeNeutrinoOpacityRates_MuonIMD &
             ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
-              Phi_0_MuonOpac_P, Eta_IMD_P, Chi_IMD_P )
+              Phi_0_MuonOpac_P, Eta_IMD_P, Chi_IMD_P, &
+             OpacityMask_Option = OpacityMask_P )
 
       CALL TimersStop( Timer_OpacityRate_IMD )
 
@@ -2363,7 +2439,8 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacityRates_Pair &
            ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, J_I_0_P, J_II_0_P, &
-             Eta_Pair_P, Chi_Pair_P )
+             Eta_Pair_P, Chi_Pair_P, &
+             OpacityMask_Option = OpacityMask_P )
 
     IF( Include_LinCorr )THEN
 
@@ -2373,7 +2450,8 @@ CONTAINS
              ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
                Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, J_I_1_P, J_II_1_P, &
                L_Pair_Pro_u_1_P, L_Pair_Pro_u_2_P, L_Pair_Pro_u_3_P, &
-               L_Pair_Ann_u_1_P, L_Pair_Ann_u_2_P, L_Pair_Ann_u_3_P )
+               L_Pair_Ann_u_1_P, L_Pair_Ann_u_2_P, L_Pair_Ann_u_3_P, &
+             OpacityMask_Option = OpacityMask_P )
 
     END IF
 
@@ -2385,7 +2463,8 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacityRates_NuPair &
            ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, &
-             Nu_J_I_0_P, Nu_J_II_0_P, Eta_NuPair_P, Chi_NuPair_P )
+             Nu_J_I_0_P, Nu_J_II_0_P, Eta_NuPair_P, Chi_NuPair_P, &
+             OpacityMask_Option = OpacityMask_P )
 
     CALL TimersStop( Timer_OpacityRate_NuPair )
 
@@ -2395,7 +2474,8 @@ CONTAINS
 
     CALL ComputeNeutrinoOpacityRates_Brem &
            ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, Dnu_P, Dnu_0_P, S_Sigma_P, &
-             Eta_Brem_P, Chi_Brem_P )
+             Eta_Brem_P, Chi_Brem_P, &
+             OpacityMask_Option = OpacityMask_P )
 
     IF( Include_LinCorr )THEN
 
@@ -2405,7 +2485,8 @@ CONTAINS
              ( 1, nE_G, 1, nSpecies, 1, nX, D_P, W2_N, &
                Inu_u_1_P, Inu_u_2_P, Inu_u_3_P, Dnu_0_P, S_Sigma_P, &
                L_Brem_Pro_u_1_P, L_Brem_Pro_u_2_P, L_Brem_Pro_u_3_P, &
-               L_Brem_Ann_u_1_P, L_Brem_Ann_u_2_P, L_Brem_Ann_u_3_P )
+               L_Brem_Ann_u_1_P, L_Brem_Ann_u_2_P, L_Brem_Ann_u_3_P, &
+             OpacityMask_Option = OpacityMask_P )
 
     END IF
 
@@ -2652,9 +2733,9 @@ CONTAINS
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
-      C_Ye(iN_X) = U_Ye(iN_X) + wMatrRHS(iYe) * SUM_Ye * S_Ye(iN_X)
-      C_Ym(iN_X) = U_Ym(iN_X) + wMatrRHS(iYm) * SUM_Ym * S_Ym(iN_X)
-      C_Ef(iN_X) = U_Ef(iN_X) + wMatrRHS(iEf) * SUM_Ef * S_Ef(iN_X)
+      C_Ye(iN_X) = U_Ye(iN_X) + MatterCouplingWeight(iYe,iN_X) * SUM_Ye * S_Ye(iN_X)
+      C_Ym(iN_X) = U_Ym(iN_X) + MatterCouplingWeight(iYm,iN_X) * SUM_Ym * S_Ym(iN_X)
+      C_Ef(iN_X) = U_Ef(iN_X) + MatterCouplingWeight(iEf,iN_X) * SUM_Ef * S_Ef(iN_X)
 
     END DO
 
@@ -2854,12 +2935,12 @@ CONTAINS
       END DO
       END DO
 
-      IF ( ABS( Ym(iN_X) ) <= 1d-100) THEN 
+      IF ( ABS( Ym(iN_X) ) <= 1d-100) THEN
         Ym_hat(iN_X) = Zero
         S_Ym (iN_X) = Zero
-      ELSE 
+      ELSE
         Ym_hat(iN_X)  = MAX( Ym_old(iN_X), SUM_Ym * AtomicMassUnit / D(iN_X), 1d-10 )
-        IF ( QueryOpacity_EmAb_Muon( D(iN_X) / Unit_D ) ) THEN
+        IF ( MatterSource_Mask(iYm,iN_X) ) THEN
           S_Ym(iN_X)    = One / ( D(iN_X) * Ym_hat(iN_X) / AtomicMassUnit )
         ELSE
           S_Ym (iN_X) = Zero
@@ -2869,12 +2950,12 @@ CONTAINS
 
       ! --- Include Old Matter State in Constant (C) Terms ---
 
-      C_Ye   (iN_X) = U_Ye   (iN_X) + wMatrRHS(iYe) * SUM_Ye * S_Ye   (iN_X)
-      C_Ym   (iN_X) = U_Ym   (iN_X) + wMatrRHS(iYm) * SUM_Ym * S_Ym   (iN_X)
-      C_Ef   (iN_X) = U_Ef   (iN_X) + wMatrRHS(iEf) * SUM_Ef * S_Ef   (iN_X)
-      C_V_d_1(iN_X) = U_V_d_1(iN_X) + wMatrRHS(iV1) * SUM_V1 * S_V_d_1(iN_X)
-      C_V_d_2(iN_X) = U_V_d_2(iN_X) + wMatrRHS(iV2) * SUM_V2 * S_V_d_2(iN_X)
-      C_V_d_3(iN_X) = U_V_d_3(iN_X) + wMatrRHS(iV3) * SUM_V3 * S_V_d_3(iN_X)
+      C_Ye   (iN_X) = U_Ye   (iN_X) + MatterCouplingWeight(iYe,iN_X) * SUM_Ye * S_Ye   (iN_X)
+      C_Ym   (iN_X) = U_Ym   (iN_X) + MatterCouplingWeight(iYm,iN_X) * SUM_Ym * S_Ym   (iN_X)
+      C_Ef   (iN_X) = U_Ef   (iN_X) + MatterCouplingWeight(iEf,iN_X) * SUM_Ef * S_Ef   (iN_X)
+      C_V_d_1(iN_X) = U_V_d_1(iN_X) + MatterCouplingWeight(iV1,iN_X) * SUM_V1 * S_V_d_1(iN_X)
+      C_V_d_2(iN_X) = U_V_d_2(iN_X) + MatterCouplingWeight(iV2,iN_X) * SUM_V2 * S_V_d_2(iN_X)
+      C_V_d_3(iN_X) = U_V_d_3(iN_X) + MatterCouplingWeight(iV3,iN_X) * SUM_V3 * S_V_d_3(iN_X)
 
     END DO
 
@@ -3106,30 +3187,30 @@ CONTAINS
       ! --- Include Old Matter State in Constant (C) Terms ---
 
 
-      IF ( wMatrRHS(iD) .EQ. 1.0_DP) THEN
+      IF ( MatterCouplingWeight(iD,iN_X) .EQ. 1.0_DP) THEN
         C_D    (iN_X) &
           = W * U_D(iN_X)
-      ELSE  
+      ELSE
         C_D    (iN_X) &
           = U_D(iN_X)
       END IF
 
-      IF ( wMatrRHS(iYe) .EQ. 1.0_DP) THEN
+      IF ( MatterCouplingWeight(iYe,iN_X) .EQ. 1.0_DP) THEN
         C_Ye    (iN_X) &
           = U_Ye(iN_X) + SUM_Ye * S_Ye(iN_X)
       ELSE
         C_Ye    (iN_X) &
           = U_Ye(iN_X)
       END IF
-      IF ( wMatrRHS(iYm) .EQ. 1.0_DP) THEN
+      IF ( MatterCouplingWeight(iYm,iN_X) .EQ. 1.0_DP) THEN
         C_Ym    (iN_X) &
           = U_Ym(iN_X) + SUM_Ym * S_Ym(iN_X)
       ELSE
         C_Ym    (iN_X) &
           = U_Ym(iN_X)
       END IF
-       
-      IF ( wMatrRHS(iEF) .EQ. 1.0_DP) THEN
+
+      IF ( MatterCouplingWeight(iEF,iN_X) .EQ. 1.0_DP) THEN
         C_Ef   (iN_X) &
           = ( Tau_f + SUM_Ef ) * S_Ef  (iN_X) / cD_old(iN_X)
       ELSE
@@ -3137,7 +3218,7 @@ CONTAINS
           = U_Ef(iN_X)
       END IF
 
-      IF ( wMatrRHS(iV1) .EQ. 1.0_DP) THEN
+      IF ( MatterCouplingWeight(iV1,iN_X) .EQ. 1.0_DP) THEN
         C_V_d_1(iN_X) &
           = ( SJ(1) + SUM_V1 ) * S_V_d_1(iN_X) / cD_old(iN_X)
       ELSE
@@ -3146,7 +3227,7 @@ CONTAINS
       END IF
 
 
-      IF ( wMatrRHS(iV2) .EQ. 1.0_DP) THEN
+      IF ( MatterCouplingWeight(iV2,iN_X) .EQ. 1.0_DP) THEN
         C_V_d_2(iN_X) &
           = ( SJ(2) + SUM_V2 ) * S_V_d_2(iN_X) / cD_old(iN_X)
       ELSE
@@ -3155,7 +3236,7 @@ CONTAINS
       END IF
 
 
-      IF ( wMatrRHS(iV3) .EQ. 1.0_DP) THEN
+      IF ( MatterCouplingWeight(iV3,iN_X) .EQ. 1.0_DP) THEN
         C_V_d_3(iN_X) &
           = ( SJ(3) + SUM_V3 ) * S_V_d_3(iN_X) / cD_old(iN_X)
       ELSE
@@ -3253,9 +3334,9 @@ CONTAINS
         END DO
         END DO
 
-        G_Ye   (iN_X) = C_Ye(iN_X) - wMatrRHS(iYe) * SUM_Ye * S_Ye(iN_X)
-        G_Ym   (iN_X) = C_Ym(iN_X) - wMatrRHS(iYm) * SUM_Ym * S_Ym(iN_X)
-        G_Ef   (iN_X) = C_Ef(iN_X) - wMatrRHS(iEf) * SUM_Ef * S_Ef(iN_X)
+        G_Ye   (iN_X) = C_Ye(iN_X) - MatterCouplingWeight(iYe,iN_X) * SUM_Ye * S_Ye(iN_X)
+        G_Ym   (iN_X) = C_Ym(iN_X) - MatterCouplingWeight(iYm,iN_X) * SUM_Ym * S_Ym(iN_X)
+        G_Ef   (iN_X) = C_Ef(iN_X) - MatterCouplingWeight(iEf,iN_X) * SUM_Ef * S_Ef(iN_X)
 
         Gm(iYe,iN_X) = G_Ye(iN_X)
         Gm(iYm,iN_X) = G_Ym(iN_X)
@@ -3397,12 +3478,12 @@ CONTAINS
         END DO
         END DO
 
-        G_Ye   (iN_X) = C_Ye   (iN_X) - wMatrRHS(iYe) * SUM_Ye * S_Ye   (iN_X)
-        G_Ym   (iN_X) = C_Ym   (iN_X) - wMatrRHS(iYm) * SUM_Ym * S_Ym   (iN_X)
-        G_Ef   (iN_X) = C_Ef   (iN_X) - wMatrRHS(iEf) * SUM_Ef * S_Ef   (iN_X)
-        G_V_d_1(iN_X) = C_V_d_1(iN_X) - wMatrRHS(iV1) * SUM_V1 * S_V_d_1(iN_X)
-        G_V_d_2(iN_X) = C_V_d_2(iN_X) - wMatrRHS(iV2) * SUM_V2 * S_V_d_2(iN_X)
-        G_V_d_3(iN_X) = C_V_d_3(iN_X) - wMatrRHS(iV3) * SUM_V3 * S_V_d_3(iN_X)
+        G_Ye   (iN_X) = C_Ye   (iN_X) - MatterCouplingWeight(iYe,iN_X) * SUM_Ye * S_Ye   (iN_X)
+        G_Ym   (iN_X) = C_Ym   (iN_X) - MatterCouplingWeight(iYm,iN_X) * SUM_Ym * S_Ym   (iN_X)
+        G_Ef   (iN_X) = C_Ef   (iN_X) - MatterCouplingWeight(iEf,iN_X) * SUM_Ef * S_Ef   (iN_X)
+        G_V_d_1(iN_X) = C_V_d_1(iN_X) - MatterCouplingWeight(iV1,iN_X) * SUM_V1 * S_V_d_1(iN_X)
+        G_V_d_2(iN_X) = C_V_d_2(iN_X) - MatterCouplingWeight(iV2,iN_X) * SUM_V2 * S_V_d_2(iN_X)
+        G_V_d_3(iN_X) = C_V_d_3(iN_X) - MatterCouplingWeight(iV3,iN_X) * SUM_V3 * S_V_d_3(iN_X)
 
         Gm(iYe,iN_X) = G_Ye   (iN_X)
         Gm(iYm,iN_X) = G_Ym   (iN_X)
@@ -3590,16 +3671,16 @@ CONTAINS
         END DO
         END DO
 
-        h = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) ) 
+        h = ( 1.0_DP + E(iN_X) + P(iN_X) / D(iN_X) )
 
-        IF ( wMatrRHS(iD) .EQ. 1.0_DP) THEN
-          G_D    (iN_X)  = ( 1.0_DP / W ) * C_D  (iN_X) 
-        ELSE  
+        IF ( MatterCouplingWeight(iD,iN_X) .EQ. 1.0_DP) THEN
+          G_D    (iN_X)  = ( 1.0_DP / W ) * C_D  (iN_X)
+        ELSE
           G_D    (iN_X) &
             = C_D(iN_X)
         END IF
 
-        IF ( wMatrRHS(iYe) .EQ. 1.0_DP) THEN
+        IF ( MatterCouplingWeight(iYe,iN_X) .EQ. 1.0_DP) THEN
           G_Ye   (iN_X) &
             = C_Ye   (iN_X) - ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Ye * S_Ye(iN_X)
         ELSE
@@ -3607,55 +3688,55 @@ CONTAINS
             = C_Ye(iN_X)
         END IF
 
-        IF ( wMatrRHS(iYm) .EQ. 1.0_DP) THEN
+        IF ( MatterCouplingWeight(iYm,iN_X) .EQ. 1.0_DP) THEN
           G_Ym    (iN_X) &
             = C_Ym(iN_X) - ( AtomicMassUnit / cD_old(iN_X) ) * SUM_Ym * S_Ym(iN_X)
         ELSE
           G_Ym    (iN_X) &
             = C_Ym(iN_X)
         END IF
-         
-        IF ( wMatrRHS(iEF) .EQ. 1.0_DP) THEN
+
+        IF ( MatterCouplingWeight(iEF,iN_X) .EQ. 1.0_DP) THEN
           G_Ef   (iN_X)  = S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 * ( W + ( W + 1.0_DP) * P(iN_X) / D(iN_X) ) &
-                         + 1.0_DP / W * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef 
+                         + 1.0_DP / W * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef
         ELSE
           G_Ef   (iN_X) &
             = C_Ef(iN_X)
         END IF
 
-        IF ( wMatrRHS(iV1) .EQ. 1.0_DP) THEN
+        IF ( MatterCouplingWeight(iV1,iN_X) .EQ. 1.0_DP) THEN
           G_V_d_1(iN_X)  &
-            = 1.0_DP / ( h * W ) * (  C_V_d_1(iN_X) - SUM_V1 * S_V_d_1(iN_X) / cD_old(iN_X) ) 
+            = 1.0_DP / ( h * W ) * (  C_V_d_1(iN_X) - SUM_V1 * S_V_d_1(iN_X) / cD_old(iN_X) )
         ELSE
           G_V_d_1(iN_X) &
             = C_V_d_1(iN_X)
         END IF
 
 
-        IF ( wMatrRHS(iV2) .EQ. 1.0_DP) THEN
+        IF ( MatterCouplingWeight(iV2,iN_X) .EQ. 1.0_DP) THEN
           G_V_d_2(iN_X) &
-            = 1.0_DP / ( h * W ) * (  C_V_d_2(iN_X) - SUM_V2 * S_V_d_2(iN_X) / cD_old(iN_X) ) 
+            = 1.0_DP / ( h * W ) * (  C_V_d_2(iN_X) - SUM_V2 * S_V_d_2(iN_X) / cD_old(iN_X) )
         ELSE
           G_V_d_2(iN_X) &
             = C_V_d_2(iN_X)
         END IF
 
 
-        IF ( wMatrRHS(iV3) .EQ. 1.0_DP) THEN
+        IF ( MatterCouplingWeight(iV3,iN_X) .EQ. 1.0_DP) THEN
           G_V_d_3(iN_X) &
-            = 1.0_DP / ( h * W ) * (  C_V_d_3(iN_X) - SUM_V3 * S_V_d_3(iN_X) / cD_old(iN_X) ) 
+            = 1.0_DP / ( h * W ) * (  C_V_d_3(iN_X) - SUM_V3 * S_V_d_3(iN_X) / cD_old(iN_X) )
         ELSE
           G_V_d_3(iN_X) &
             = C_V_d_3(iN_X)
         END IF
 
 
-        
+
 
         IF( MoveLeft .EQ. 1) THEN
-          IF ( wMatrRHS(iEF) .EQ. 1.0_DP) THEN
+          IF ( MatterCouplingWeight(iEF,iN_X) .EQ. 1.0_DP) THEN
             G_Ef(iN_X) = ( 1.0_DP / W ) * C_Ef(iN_X) - S_Ef(iN_X) / ( W * cD_old(iN_X) ) * SUM_Ef &
-                       + S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 *  ( W + 1.0_DP) * P(iN_X) / D(iN_X) 
+                       + S_Ef(iN_X) * ( 1.0_DP - W ) / W**2 *  ( W + 1.0_DP) * P(iN_X) / D(iN_X)
           ELSE
             G_Ef   (iN_X) &
               = C_Ef(iN_X)
@@ -4280,6 +4361,18 @@ CONTAINS
 
         Ye    (iN_X) = U_Ye(iN_X) * Ye_old(iN_X)
         Ym    (iN_X) = U_Ym(iN_X) * Ym_old(iN_X)
+        IF( .NOT. MatterSource_Mask(iYe,iN_X) )THEN
+          Ye(iN_X)=Ye_old(iN_X)
+          U_Ye(iN_X)=One
+          Gm(iYe,iN_X)=U_Ye(iN_X)
+          Fm(iYe,iN_X)=Zero
+        END IF
+        IF( .NOT. MatterSource_Mask(iYm,iN_X) )THEN
+          Ym(iN_X)=Ym_old(iN_X)
+          U_Ym(iN_X)=One
+          Gm(iYm,iN_X)=U_Ym(iN_X)
+          Fm(iYm,iN_X)=Zero
+        END IF
         E     (iN_X) = U_Ef(iN_X) * Ef_old(iN_X)
 
       END IF
@@ -4331,6 +4424,19 @@ CONTAINS
         Ye(iN_X) = U_Ye   (iN_X) * Ye_old(iN_X)
         !Ym(iN_X) = U_Ym   (iN_X) * Ym_old(iN_X)
         Ym(iN_X) = U_Ym   (iN_X) * Ym_hat(iN_X)
+        IF( .NOT. MatterSource_Mask(iYe,iN_X) )THEN
+          Ye(iN_X)=Ye_old(iN_X)
+          U_Ye(iN_X)=One
+          Gm(iYe,iN_X)=U_Ye(iN_X)
+          Fm(iYe,iN_X)=Zero
+        END IF
+        IF( .NOT. MatterSource_Mask(iYm,iN_X) )THEN
+          Ym(iN_X)=Ym_old(iN_X)
+          U_Ym(iN_X)=One
+          IF( Ym_hat(iN_X) > Zero ) U_Ym(iN_X)=Ym_old(iN_X)/Ym_hat(iN_X)
+          Gm(iYm,iN_X)=U_Ym(iN_X)
+          Fm(iYm,iN_X)=Zero
+        END IF
         Ef       = U_Ef   (iN_X) * Ef_old(iN_X)
         V_d_1    = U_V_d_1(iN_X) * SpeedOfLight
         V_d_2    = U_V_d_2(iN_X) * SpeedOfLight
@@ -4405,6 +4511,18 @@ CONTAINS
         D (iN_X) = U_D    (iN_X) * D_old (iN_X)
         Ye(iN_X) = U_Ye   (iN_X) * Ye_old(iN_X)
         Ym(iN_X) = U_Ym   (iN_X) * Ym_old(iN_X)
+        IF( .NOT. MatterSource_Mask(iYe,iN_X) )THEN
+          Ye(iN_X)=Ye_old(iN_X)
+          U_Ye(iN_X)=One
+          Gm(iYe,iN_X)=U_Ye(iN_X)
+          Fm(iYe,iN_X)=Zero
+        END IF
+        IF( .NOT. MatterSource_Mask(iYm,iN_X) )THEN
+          Ym(iN_X)=Ym_old(iN_X)
+          U_Ym(iN_X)=One
+          Gm(iYm,iN_X)=U_Ym(iN_X)
+          Fm(iYm,iN_X)=Zero
+        END IF
         Ef_temp  = U_Ef   (iN_X) * Ef_old(iN_X)
         V_d_1    = U_V_d_1(iN_X) * SpeedOfLight
         V_d_2    = U_V_d_2(iN_X) * SpeedOfLight
@@ -5429,6 +5547,69 @@ CONTAINS
     !end if
 
   END SUBROUTINE PrintStatus_FP
+
+
+
+  SUBROUTINE SetMatterSourceMask
+    INTEGER :: iX, iProcess, p
+    LOGICAL :: LFE, LFC, IMD, NMS, GeneralNES
+    LFE=.FALSE.; LFC=.FALSE.; IMD=.FALSE.; NMS=.FALSE.; GeneralNES=.FALSE.
+    DO iProcess=1,nProcess_MuonOpac
+      p=iProcessList_MuonOpac(iProcess)
+      GeneralNES=GeneralNES .OR. (p>=1 .AND. p<=12)
+      NMS=NMS .OR. (p>=13 .AND. p<=24)
+      LFE=LFE .OR. (p>=25 .AND. p<=28)
+      LFC=LFC .OR. (p>=29 .AND. p<=32)
+      IMD=IMD .OR. (p>=33 .AND. p<=34)
+    END DO
+    DO iX=1,nX_G
+      MatterSource_Mask(:,iX)=Opacity_Mask(iOp_EmAb_Electron,iX) .OR. &
+        (nSpecies>=iNuM_Bar .AND. Opacity_Mask(iOp_EmAb_Muon,iX)) .OR. &
+        Opacity_Mask(iOp_ECTable,iX) .OR. Opacity_Mask(iOp_Iso,iX) .OR. &
+        (Include_NES .AND. Opacity_Mask(iOp_NES,iX)) .OR. &
+        (Include_Pair .AND. Opacity_Mask(iOp_Pair,iX)) .OR. &
+        (Include_NuPair .AND. Opacity_Mask(iOp_NuPair,iX)) .OR. &
+        (Include_Brem .AND. Opacity_Mask(iOp_Brem,iX)) .OR. &
+        (GeneralNES .AND. Opacity_Mask(iOp_NES,iX)) .OR. &
+        (NMS .AND. Opacity_Mask(iOp_NMS,iX)) .OR. &
+        (LFE .AND. Opacity_Mask(iOp_LFE,iX)) .OR. &
+        (LFC .AND. Opacity_Mask(iOp_LFC,iX)) .OR. &
+        (IMD .AND. Opacity_Mask(iOp_IMD,iX))
+      MatterSource_Mask(iYe,iX)=Opacity_Mask(iOp_EmAb_Electron,iX) .OR. &
+        Opacity_Mask(iOp_ECTable,iX) .OR. &
+        (LFE .AND. Opacity_Mask(iOp_LFE,iX)) .OR. &
+        (LFC .AND. Opacity_Mask(iOp_LFC,iX)) .OR. &
+        (IMD .AND. Opacity_Mask(iOp_IMD,iX))
+      MatterSource_Mask(iYm,iX)=nSpecies>=iNuM_Bar .AND. &
+        (Opacity_Mask(iOp_EmAb_Muon,iX) .OR. &
+         (LFE .AND. Opacity_Mask(iOp_LFE,iX)) .OR. &
+         (LFC .AND. Opacity_Mask(iOp_LFC,iX)) .OR. &
+         (IMD .AND. Opacity_Mask(iOp_IMD,iX)))
+    END DO
+  END SUBROUTINE SetMatterSourceMask
+
+  FUNCTION MatterCouplingWeight( iEquation, iX ) RESULT(Weight)
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    INTEGER, INTENT(in) :: iEquation, iX
+    REAL(DP) :: Weight
+    Weight=Zero
+    IF( MatterSource_Mask(iEquation,iX) ) Weight=wMatrRHS(iEquation)
+  END FUNCTION MatterCouplingWeight
+
+  LOGICAL FUNCTION QueryCollisionMask( iX )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    INTEGER, INTENT(in) :: iX
+    QueryCollisionMask=ANY(MatterSource_Mask(:,iX))
+  END FUNCTION QueryCollisionMask
+
 
 
 END MODULE TwoMoment_NeutrinoMatterSolverModule

@@ -22,6 +22,8 @@ MODULE OpacityModule_TABLE
     GetIndexAndDelta_Log
   USE wlGeneralLeptonScatteringModuleThornadoInterface, ONLY: &
     InitGeneralScatteringKernels, FinalizeGeneralScatteringKernels
+  USE wlSemiLeptonicOpacityModule2D, ONLY: &
+    InitOpacity_CC_2D
 
   ! ----------------------------------------------
 
@@ -104,7 +106,14 @@ MODULE OpacityModule_TABLE
   INTEGER, PUBLIC:: nProcess_MuonOpac
   INTEGER, DIMENSION(:), ALLOCATABLE, PUBLIC:: iGroupList_MuonOpac, iProcessList_MuonOpac
   LOGICAL, PUBLIC :: Compute_IND
-  
+
+  REAL(DP) :: NMS_MinD, NMS_MaxD
+  REAL(DP) :: LFE_MinD, LFE_MaxD
+  REAL(DP) :: LFC_MinD, LFC_MaxD
+  REAL(DP) :: IMD_MinD, IMD_MaxD
+
+  PUBLIC :: QueryOpacity_NMS, QueryOpacity_LFE, QueryOpacity_LFC, QueryOpacity_IMD
+
   LOGICAL :: Use_OpacityTables
 
   INTEGER, PUBLIC :: EmAb_Muon_Method  ! Method for computing muon EmAb opacities
@@ -185,13 +194,14 @@ MODULE OpacityModule_TABLE
   !$OMP   Brem_MinD, Brem_MaxD,                           &
   !$OMP   NNS_MinD, NNS_MaxD,                             &
   !$OMP   NuPair_MinD, NuPair_MaxD,                       &
+  !$OMP   NMS_MinD, NMS_MaxD, LFE_MinD, LFE_MaxD, LFC_MinD, LFC_MaxD, IMD_MinD, IMD_MaxD, &
   !$OMP   Op_MinD, Op_MaxD )
 #elif defined(THORNADO_OACC)
   !$ACC DECLARE CREATE &
   !$ACC ( LogEs_T, LogDs_T, LogTs_T, Ys_T, LogEtas_T,     &
   !$ACC   Ds_EC_T, Ts_EC_T, Ys_EC_T, Es_EC_T,             &
   !$ACC   OS_EmAb, OS_Iso, OS_NES, OS_Pair, OS_Brem,      &
-  !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT,  & 
+  !$ACC   EmAb_T, Iso_T, NES_T, Pair_T, NES_AT, Pair_AT,  &
   !$ACC   Brem_T, Brem_AT, C1, C2, C1_NuPair, C2_NuPair,  &
   !$ACC   use_EC_table, OS_EmAb_EC_rate, OS_EmAb_EC_spec, &
   !$ACC   EmAb_EC_rate_T, EmAb_EC_spec_T, EC_nE, EC_dE,   &
@@ -208,6 +218,7 @@ MODULE OpacityModule_TABLE
   !$ACC   Brem_MinD, Brem_MaxD,                           &
   !$ACC   NNS_MinD, NNS_MaxD,                             &
   !$ACC   NuPair_MinD, NuPair_MaxD,                       &
+  !$ACC   NMS_MinD, NMS_MaxD, LFE_MinD, LFE_MaxD, LFC_MinD, LFC_MaxD, IMD_MinD, IMD_MaxD, &
   !$ACC   Op_MinD, Op_MaxD )
 #endif
 
@@ -227,14 +238,20 @@ CONTAINS
       NES_MinD_Option, NES_MaxD_Option,                          &
       Compute_NES_Option, Compute_NMS_Option,                    &
       Compute_LFE_Option, Compute_LFC_Option,                    &
-      Compute_IMD_Option, Compute_IND_Option,                    &                                             
+      Compute_IMD_Option, Compute_IND_Option,                    &
       Pair_MinD_Option, Pair_MaxD_Option,                        &
       Brem_MinD_Option, Brem_MaxD_Option,                        &
       NNS_MinD_Option, NNS_MaxD_Option,                          &
       NuPair_MinD_Option, NuPair_MaxD_Option,                    &
       Op_MinD_Option, Op_MaxD_Option,                            &
-      EquationOfStateTableName_Option, Verbose_Option )
+      EquationOfStateTableName_Option, Verbose_Option, &
+      NMS_MinD_Option, NMS_MaxD_Option, LFE_MinD_Option, LFE_MaxD_Option, &
+      LFC_MinD_Option, LFC_MaxD_Option, IMD_MinD_Option, IMD_MaxD_Option )
 
+    REAL(DP), INTENT(in), OPTIONAL :: NMS_MinD_Option, NMS_MaxD_Option
+    REAL(DP), INTENT(in), OPTIONAL :: LFE_MinD_Option, LFE_MaxD_Option
+    REAL(DP), INTENT(in), OPTIONAL :: LFC_MinD_Option, LFC_MaxD_Option
+    REAL(DP), INTENT(in), OPTIONAL :: IMD_MinD_Option, IMD_MaxD_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_EmAb_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_Iso_Option
     CHARACTER(LEN=*), INTENT(in), OPTIONAL :: OpacityTableName_NES_Option
@@ -268,13 +285,26 @@ CONTAINS
     LOGICAL :: Include_Pair
     LOGICAL :: Include_Brem
     LOGICAL :: Verbose
+    LOGICAL :: GeneralNES, GeneralNMS, GeneralLFE, GeneralLFC, GeneralIMD
 
-    ! Helpers for EC table 
+    ! Helpers for EC table
     REAL(dp), DIMENSION(nE)   :: E_cells, dE_cells
     REAL(dp), DIMENSION(nE+1) :: E_faces
     INTEGER                   :: k, kk
     REAL(dp)                  :: EC_E_max
     REAL(dp)                  :: x
+
+    nProcess_MuonOpac=0
+    GeneralNES=.FALSE.
+    IF( PRESENT(Compute_NES_Option) ) GeneralNES=Compute_NES_Option
+    GeneralNMS=.FALSE.
+    IF( PRESENT(Compute_NMS_Option) ) GeneralNMS=Compute_NMS_Option
+    GeneralLFE=.FALSE.
+    IF( PRESENT(Compute_LFE_Option) ) GeneralLFE=Compute_LFE_Option
+    GeneralLFC=.FALSE.
+    IF( PRESENT(Compute_LFC_Option) ) GeneralLFC=Compute_LFC_Option
+    GeneralIMD=.FALSE.
+    IF( PRESENT(Compute_IMD_Option) ) GeneralIMD=Compute_IMD_Option
 
     IF( PRESENT( OpacityTableName_EmAb_Option ) &
         .AND. ( LEN_TRIM( OpacityTableName_EmAb_Option ) > 1 ) )THEN
@@ -301,6 +331,15 @@ CONTAINS
     ELSE
       OpacityTableName_NES = ''
       Include_NES = .FALSE.
+    END IF
+
+    ! --- Tabulated NES and the general kernels 1-12 are the same process ---
+
+    IF( Include_NES .AND. GeneralNES )THEN
+      WRITE(*,*)
+      WRITE(*,'(A)') '  WARNING: NES table and Compute_NES_Option are both on;'
+      WRITE(*,'(A)') '           neutrino-electron scattering is counted twice.'
+      WRITE(*,*)
     END IF
 
     IF( PRESENT( OpacityTableName_Pair_Option ) &
@@ -457,6 +496,11 @@ CONTAINS
       nE_Muon_2D = 50 ! Overkill, 30 is probably enough
     END IF
 
+    ! --- weaklib's Opacity_CC_2D (IND, EmAb_Muon_Method = 2) returns zero
+    ! --- unless its quadrature is initialized
+
+    CALL InitOpacity_CC_2D( nE_Muon_2D )
+
     ! --- Iso ---
 
     IF( PRESENT( Iso_MinD_Option ) )THEN
@@ -580,6 +624,28 @@ CONTAINS
     EmAb_Nucleon_MaxD = MIN( EmAb_Nucleon_MaxD, EmAb_MaxD )
     EmAb_Nuclei_MaxD  = MIN( EmAb_Nuclei_MaxD , EmAb_MaxD )
     EmAb_Muon_MaxD    = MIN( EmAb_Muon_MaxD   , EmAb_MaxD )
+
+    ! Preserve the legacy muon-reaction window unless explicitly overridden.
+    NMS_MinD = EmAb_Muon_MinD
+    NMS_MaxD = EmAb_Muon_MaxD
+    IF( PRESENT(NMS_MinD_Option) ) NMS_MinD = MAX(Op_MinD,NMS_MinD_Option)
+    IF( PRESENT(NMS_MaxD_Option) ) NMS_MaxD = MIN(Op_MaxD,NMS_MaxD_Option)
+
+    LFE_MinD = EmAb_Muon_MinD
+    LFE_MaxD = EmAb_Muon_MaxD
+    IF( PRESENT(LFE_MinD_Option) ) LFE_MinD = MAX(Op_MinD,LFE_MinD_Option)
+    IF( PRESENT(LFE_MaxD_Option) ) LFE_MaxD = MIN(Op_MaxD,LFE_MaxD_Option)
+
+    LFC_MinD = EmAb_Muon_MinD
+    LFC_MaxD = EmAb_Muon_MaxD
+    IF( PRESENT(LFC_MinD_Option) ) LFC_MinD = MAX(Op_MinD,LFC_MinD_Option)
+    IF( PRESENT(LFC_MaxD_Option) ) LFC_MaxD = MIN(Op_MaxD,LFC_MaxD_Option)
+
+    IMD_MinD = EmAb_Muon_MinD
+    IMD_MaxD = EmAb_Muon_MaxD
+    IF( PRESENT(IMD_MinD_Option) ) IMD_MinD = MAX(Op_MinD,IMD_MinD_Option)
+    IF( PRESENT(IMD_MaxD_Option) ) IMD_MaxD = MIN(Op_MaxD,IMD_MaxD_Option)
+
 
     nPointsE = nE * nNodesE
 
@@ -813,6 +879,7 @@ CONTAINS
     !$OMP                  Brem_MinD, Brem_MaxD,                       &
     !$OMP                  NNS_MinD, NNS_MaxD,                         &
     !$OMP                  NuPair_MinD, NuPair_MaxD,                   &
+    !$OMP                  NMS_MinD, NMS_MaxD, LFE_MinD, LFE_MaxD, LFC_MinD, LFC_MaxD, IMD_MinD, IMD_MaxD, &
     !$OMP                  Op_MinD, Op_MaxD                            )
 #elif defined(THORNADO_OACC)
     !$ACC UPDATE DEVICE &
@@ -832,6 +899,7 @@ CONTAINS
     !$ACC   Brem_MinD, Brem_MaxD,                       &
     !$ACC   NNS_MinD, NNS_MaxD,                         &
     !$ACC   NuPair_MinD, NuPair_MaxD,                   &
+    !$ACC   NMS_MinD, NMS_MaxD, LFE_MinD, LFE_MaxD, LFC_MinD, LFC_MaxD, IMD_MinD, IMD_MaxD, &
     !$ACC   Op_MinD, Op_MaxD                            )
 #endif
 
@@ -979,34 +1047,31 @@ CONTAINS
 
     ! MUONS
     nProcess_MuonOpac = 0
-    if (Compute_IND_Option) THEN 
-        Compute_IND = .TRUE.
-    else
-        Compute_IND = .FALSE.
-    end if
-    if (Compute_NES_Option .or. Compute_NMS_Option .or. &
-        Compute_LFE_Option .or. Compute_LFC_Option .or. &
-        Compute_IMD_Option ) THEN
+    Compute_IND = .FALSE.
+    IF( PRESENT( Compute_IND_Option ) ) Compute_IND = Compute_IND_Option
+    if (GeneralNES .or. GeneralNMS .or. &
+        GeneralLFE .or. GeneralLFC .or. &
+        GeneralIMD ) THEN
       ALLOCATE( iGroupList_MuonOpac(0) )
       ALLOCATE( iProcessList_MuonOpac(0) )
-      if (Compute_NES_Option) THEN
+      if (GeneralNES) THEN
         iGroupList_MuonOpac   = [iGroupList_MuonOpac, 1]
         iProcessList_MuonOpac = [iProcessList_MuonOpac, (k, k = 1, 12)]
       end if
 #ifdef EOSMODE_COMPOSE
-      if (Compute_NMS_Option) THEN
+      if (GeneralNMS) THEN
          iGroupList_MuonOpac   = [iGroupList_MuonOpac, 2]
          iProcessList_MuonOpac = [iProcessList_MuonOpac, (k, k = 13, 24)]
       end if
-      if (Compute_LFE_Option) THEN
+      if (GeneralLFE) THEN
          iGroupList_MuonOpac   = [iGroupList_MuonOpac, 3]
          iProcessList_MuonOpac = [iProcessList_MuonOpac, (k, k = 25, 28)]
       end if
-      if (Compute_LFC_Option) THEN
+      if (GeneralLFC) THEN
          iGroupList_MuonOpac   = [iGroupList_MuonOpac, 4]
          iProcessList_MuonOpac = [iProcessList_MuonOpac, (k, k = 29, 32)]
       end if
-      if (Compute_IMD_Option) THEN
+      if (GeneralIMD) THEN
         iGroupList_MuonOpac   = [iGroupList_MuonOpac, 5]
         iProcessList_MuonOpac = [iProcessList_MuonOpac, (k, k = 33, 34)]
       end if
@@ -1020,7 +1085,9 @@ CONTAINS
       END DO
       nProcess_MuonOpac = SIZE(iProcessList_MuonOpac)
       IF ( nProcess_MuonOpac > 0 ) THEN 
-         CALL InitGeneralScatteringKernels( ENodes, ENodes, nPointsE, nPointsE, 24, iGroupList_Option = iGroupList_MuonOpac)
+         ! --- Select exactly thornado's process list: weaklib's group 5 is
+         ! --- 33-36, two more rows than thornado allocates (33-34 only)
+         CALL InitGeneralScatteringKernels( ENodes, ENodes, nPointsE, nPointsE, 24, iProcessList_Option = iProcessList_MuonOpac)
       END IF
     end if
 
@@ -1194,6 +1261,7 @@ CONTAINS
     !$OMP               Brem_MinD, Brem_MaxD, &
     !$OMP               NNS_MinD, NNS_MaxD, &
     !$OMP               NuPair_MinD, NuPair_MaxD, &
+    !$OMP               NMS_MinD, NMS_MaxD, LFE_MinD, LFE_MaxD, LFC_MinD, LFC_MaxD, IMD_MinD, IMD_MaxD, &
     !$OMP               Op_MinD, Op_MaxD )
 
     IF ( use_EC_table > 0 ) THEN
@@ -1543,9 +1611,60 @@ CONTAINS
                     .OR. QueryOpacity_Iso ( D ) &
                     .OR. QueryOpacity_NES ( D ) &
                     .OR. QueryOpacity_Pair( D ) &
-                    .OR. QueryOpacity_Brem( D ) )
+                    .OR. QueryOpacity_Brem( D ) &
+                    .OR. QueryOpacity_EmAb_Muon( D ) &
+                    .OR. QueryOpacity_NuPair( D ) &
+                    .OR. QueryOpacity_NMS( D ) &
+                    .OR. QueryOpacity_LFE( D ) &
+                    .OR. QueryOpacity_LFC( D ) &
+                    .OR. QueryOpacity_IMD( D ) )
 
   END FUNCTION QueryOpacity
 
+
+
+  LOGICAL FUNCTION QueryOpacity_NMS( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: D
+    QueryOpacity_NMS = QueryOpacity_EmAb_Muon(D) .AND. &
+      D >= NMS_MinD .AND. D <= NMS_MaxD
+  END FUNCTION QueryOpacity_NMS
+
+  LOGICAL FUNCTION QueryOpacity_LFE( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: D
+    QueryOpacity_LFE = QueryOpacity_EmAb_Muon(D) .AND. &
+      D >= LFE_MinD .AND. D <= LFE_MaxD
+  END FUNCTION QueryOpacity_LFE
+
+  LOGICAL FUNCTION QueryOpacity_LFC( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: D
+    QueryOpacity_LFC = QueryOpacity_EmAb_Muon(D) .AND. &
+      D >= LFC_MinD .AND. D <= LFC_MaxD
+  END FUNCTION QueryOpacity_LFC
+
+  LOGICAL FUNCTION QueryOpacity_IMD( D )
+#if defined(THORNADO_OMP_OL)
+    !$OMP DECLARE TARGET
+#elif defined(THORNADO_OACC)
+    !$ACC ROUTINE SEQ
+#endif
+    REAL(DP), INTENT(in) :: D
+    QueryOpacity_IMD = QueryOpacity_EmAb_Muon(D) .AND. &
+      D >= IMD_MinD .AND. D <= IMD_MaxD
+  END FUNCTION QueryOpacity_IMD
 
 END MODULE OpacityModule_TABLE

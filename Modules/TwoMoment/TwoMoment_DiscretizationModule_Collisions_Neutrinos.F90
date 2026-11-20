@@ -32,6 +32,7 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
     nCR, iCR_N, iCR_G1, iCR_G2, iCR_G3, &
     nDR, iDR_iter_outer, iDR_iter_inner
   USE TwoMoment_NeutrinoMatterSolverModule, ONLY: &
+    QueryCollisionMask, &
     SolveNeutrinoMatterCoupling_FP_Nested_AA, &
     InitializeNeutrinoMatterSolver, &
     FinalizeNeutrinoMatterSolver, &
@@ -39,8 +40,6 @@ MODULE TwoMoment_DiscretizationModule_Collisions_Neutrinos
   USE TwoMoment_UtilitiesModule, ONLY: &
     ComputePrimitive_TwoMoment, &
     ComputeConserved_TwoMoment
-  USE OpacityModule_TABLE, ONLY: &
-    QueryOpacity
 #if   defined( TWOMOMENT_ORDER_1 )
 
   USE EquationOfStateModule_TABLE, ONLY: &
@@ -988,7 +987,7 @@ CONTAINS
              + ( iX2 - iX_B0(2) ) * nDOFX * nX(1) &
              + ( iX3 - iX_B0(3) ) * nDOFX * nX(1) * nX(2)
 
-      IF ( QueryOpacity( U_F(iNodeX,iX1,iX2,iX3,iCF_D) / UnitD ) ) THEN
+      IF ( QueryCollisionMask( iN_X ) ) THEN
         dU_F(iNodeX,iX1,iX2,iX3,iCF) &
           = ( CF_N(iN_X,iCF) - U_F(iNodeX,iX1,iX2,iX3,iCF) ) / dt
       ELSE
@@ -1032,7 +1031,7 @@ CONTAINS
       iN_E = iNodeE &
              + ( iE  - iE_B0    ) * nDOFE
 
-      IF ( QueryOpacity( U_F(iNodeX,iX1,iX2,iX3,iCF_D) / UnitD ) ) THEN
+      IF ( QueryCollisionMask( iN_X ) ) THEN
         dU_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) &
           = ( CR_N(iN_E,iS,iN_X,iCR) - U_R(iNodeZ,iE,iX1,iX2,iX3,iCR,iS) ) / dt
       ELSE
