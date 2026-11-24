@@ -482,9 +482,23 @@ CONTAINS
     REAL(DP), INTENT(in)  :: &
       Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(DP), INTENT(out) :: &
-      Data_thornado(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      Data_thornado(1:nDOFZ, &
+      iZ_B1(1):iZ_E1(1), &
+      iZ_B1(2):iZ_E1(2), &
+      iZ_B1(3):iZ_E1(3), &
+      iZ_B1(4):iZ_E1(4), &
+      1:nFields, &
+      1:nS)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iD, iNodeZ, iNodeE, iNodeX
+    REAL(DP) :: iD_max
+
+    iD_max = nFields * nS * ( iE_E0 - iE_B0 + 1 ) * nDOFE * nDOFX
+    IF ( iD_max > SIZE( Data_amrex, DIM=4 ) ) THEN
+      PRINT *, 'thornado2amrex_Z: component overflow', iD_max, SIZE(Data_amrex,4)
+      STOP
+    END IF
+
     DO iS  = 1      , nS
     DO iFd = 1      , nFields
     DO iZ4 = iZ_B(4), iZ_E(4)
@@ -535,9 +549,23 @@ CONTAINS
     REAL(DP), INTENT(out) :: &
       Data_amrex   (   iLo_MF(1):,iLo_MF(2):,iLo_MF(3):,iLo_MF(4):)
     REAL(DP), INTENT(in)  :: &
-      Data_thornado(1:,iZ_B1(1):,iZ_B1(2):,iZ_B1(3):,iZ_B1(4):,1:,1:)
+      Data_thornado(1:nDOFX*nDOFE, &
+                    iZ_B1(1):iZ_E1(1), &
+                    iZ_B1(2):iZ_E1(2), &
+                    iZ_B1(3):iZ_E1(3), &
+                    iZ_B1(4):iZ_E1(4), &
+                    1:nFields, &
+                    1:nS)
 
     INTEGER :: iZ1, iZ2, iZ3, iZ4, iS, iFd, iNodeZ, iD, iNodeE, iNodeX
+
+    REAL(DP) :: iD_max
+    iD_max = nFields * nS * ( iE_E0 - iE_B0 + 1 ) * nDOFE * nDOFX
+    IF ( iD_max > SIZE( Data_amrex, DIM=4 ) ) THEN
+      PRINT *, 'thornado2amrex_Z: component overflow', iD_max, SIZE(Data_amrex,4)
+      STOP
+    END IF
+
     DO iS  = 1      , nS
     DO iFd = 1      , nFields
     DO iZ4 = iZ_B(4), iZ_E(4)
@@ -548,22 +576,17 @@ CONTAINS
       DO iNodeE = 1    , nDOFE
       DO iNodeX = 1    , nDOFX
 
+        ! TODO: Check amrex index: here iD index is assumed to start from 1
+        ! Assert ( iLo_MF(4) == 1 )
         iD = ( iS - 1 ) * nFields * ( iE_E0 - iE_B0 + 1 ) * nDOFE * nDOFX &
-                + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFE * nDOFX &
-                + ( iZ1 - iE_B0 ) * nDOFE * nDOFX &
-                + ( iNodeE - 1 ) * nDOFX + iNodeX
+                    + ( iFd - 1 ) * ( iE_E0 - iE_B0 + 1 ) * nDOFE * nDOFX &
+                                        + ( iZ1 - iE_B0 ) * nDOFE * nDOFX &
+                                                 + ( iNodeE - 1 ) * nDOFX &
+                                                                  + iNodeX
 
         iNodeZ = ( iNodeX - 1 ) * nDOFE + iNodeE !( iNodeX - 1 ) * nDOFE + iNodeE !
 
-        Data_amrex(iZ2,iZ3,iZ4,iD) &
-          = Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iFd,iS)
-
-        !IF (iS == 1 .AND. iFd == 1 .AND. iZ4 == iZ_B(4) .AND. &
-        !    iZ3 == iZ_B(3) .AND. iZ2 == iZ_B(2) .AND. iZ1 == iE_B0) THEN
-        !  WRITE(*,*) 'iNodeE=', iNodeE, 'iNodeX=', iNodeX, 'iNodeZ=', iNodeZ, &
-        !             'thornado_Value=', Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iFd,iS), &
-        !             'amrex_Value=', Data_amrex(iZ2,iZ3,iZ4,iD)
-        !END IF
+        Data_amrex(iZ2,iZ3,iZ4,iLo_MF(4) + iD - 1) = Data_thornado(iNodeZ,iZ1,iZ2,iZ3,iZ4,iFd,iS)
 
       END DO
       END DO

@@ -12,20 +12,20 @@ MODULE thornado_amrex_timeintegrator_module
 
   INTERFACE
 
-    ! FIXME: declare interface
     SUBROUTINE amrex_fi_integrate_twomoment &
         ( GEOM, GE, MF_uGF, MF_uCF, MF_uCR, t, dt, &
           rhs_collision_p, rhs_streaming_p, &
-          applybc_twomoment_p, applybc_euler_p, &
-          swX, nGF, nCF, nCR, nDOFX, nDOFE, nSpecies, iE_E0, iE_B0, iE_E1, iE_B1) BIND(c)
+          applypositivitylimiter_p, &
+          swX, iE_E0, iE_B0, iE_E1, iE_B1) BIND(c)
       IMPORT
       IMPLICIT NONE
       TYPE(c_ptr), VALUE                :: GEOM, MF_uGF, MF_uCF, MF_uCR
       INTEGER(c_int),     INTENT(in)    :: swX(3)
-      INTEGER(c_int),     VALUE         :: nGF, nCF, nCR, nDOFX, nDOFE, nSpecies, iE_E0, iE_B0, iE_E1, iE_B1
+      INTEGER(c_int),     VALUE         :: iE_E0, iE_B0, iE_E1, iE_B1
       REAL(amrex_real),   INTENT(in)    :: GE(*)
       REAL(amrex_real), VALUE           :: t, dt
-      TYPE(c_funptr), VALUE             :: rhs_collision_p, rhs_streaming_p, applybc_twomoment_p, applybc_euler_p
+      TYPE(c_funptr), VALUE             :: rhs_collision_p, rhs_streaming_p
+      TYPE(c_funptr), VALUE             :: applypositivitylimiter_p
     END SUBROUTINE amrex_fi_integrate_twomoment
 
   END INTERFACE
@@ -34,8 +34,8 @@ CONTAINS
 
   SUBROUTINE amrex_integrate_twomoment &
     ( GEOM, GE, MF_uGF, MF_uCF, MF_uCR, t_new, dt, rhs_collision_p, rhs_streaming_p, &
-      applybc_twomoment_p, applybc_euler_p, &
-      swX, nGF, nCF, nCR, nDOFX, nDOFE, nSpecies, iE_E0, iE_B0, iE_E1, iE_B1 )
+      applypositivitylimiter_p, &
+      swX, iE_E0, iE_B0, iE_E1, iE_B1 )
 
     TYPE(amrex_geometry), INTENT(in)    :: GEOM
     REAL(amrex_real),     INTENT(in)    :: GE(*)
@@ -43,8 +43,9 @@ CONTAINS
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCF
     TYPE(amrex_multifab), INTENT(inout) :: MF_uCR
     REAL(amrex_real),     INTENT(in)    :: t_new, dt
-    INTEGER(c_int),       INTENT(in)    :: swX(3), nGF, nCF, nCR, nDOFX, nDOFE, nSpecies, iE_E0, iE_B0, iE_E1, iE_B1
-    TYPE(c_funptr), VALUE               :: rhs_collision_p, rhs_streaming_p, applybc_twomoment_p, applybc_euler_p
+    INTEGER(c_int),       INTENT(in)    :: swX(3), iE_E0, iE_B0, iE_E1, iE_B1
+    TYPE(c_funptr), VALUE               :: rhs_collision_p, rhs_streaming_p
+    TYPE(c_funptr), VALUE               :: applypositivitylimiter_p
 
     CALL amrex_fi_integrate_twomoment &
              ( GEOM%p, GE, &
@@ -52,8 +53,8 @@ CONTAINS
                t_new, dt, &
                rhs_collision_p, &
                rhs_streaming_p, &
-               applybc_twomoment_p, applybc_euler_p, &
-               swX, nGF, nCF, nCR, nDOFX, nDOFE, nSpecies, iE_E0, iE_B0, iE_E1, iE_B1 &
+               applypositivitylimiter_p, &
+               swX, iE_E0, iE_B0, iE_E1, iE_B1 &
                )
 
   END SUBROUTINE amrex_integrate_twomoment

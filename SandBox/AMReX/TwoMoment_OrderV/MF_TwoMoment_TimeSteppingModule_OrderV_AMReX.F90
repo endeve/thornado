@@ -74,11 +74,12 @@ MODULE MF_TwoMoment_TimeSteppingModule_OrderV_AMReX
     MF_uDF, &
     OffGridFlux_Euler_MF
   USE MF_TwoMoment_DiscretizationModule_Streaming_OrderV, ONLY: &
-    ComputeIncrement_TwoMoment_Explicit_MF
+    ComputeIncrement_TwoMoment_Explicit_MF_SinglePatch
   USE MF_TwoMoment_DiscretizationModule_Collisions_OrderV, ONLY: &
     ComputeIncrement_TwoMoment_Implicit_MF
   USE MF_TwoMoment_PositivityLimiterModule, ONLY: &
-    ApplyPositivityLimiter_TwoMoment_MF
+    ApplyPositivityLimiter_TwoMoment_MF, &
+    ApplyPositivityLimiter_TwoMoment_MF_SinglePatch
   USE MF_TwoMoment_SlopeLimiterModule, ONLY: &
     ApplySlopeLimiter_TwoMoment_MF
   USE MF_FieldsModule_TwoMoment, ONLY: &
@@ -405,8 +406,6 @@ CONTAINS
         CALL ApplyPositivityLimiter_TwoMoment_MF &
                ( iLevel, MF_uGF(iLevel), MF_uCF(iLevel), MF_uCR(iLevel) )
 
-        ! CALL MF_duCR(iLevel) % setval( 0.0_amrex_real )
-
         CALL CreateMesh_MF( iLevel, MeshX )
 
         CALL CreateFineMask( iLevel, iMF_FineMask, MF_uGF % BA, MF_uGF % DM )
@@ -414,17 +413,26 @@ CONTAINS
         CALL amrex_integrate_twomoment &
              ( GEOM(iLevel), uGE, MF_uGF(iLevel), MF_uCF(iLevel), MF_uCR(iLevel), &
                t_new(iLevel), dt(iLevel), &
-               C_FUNLOC(ComputeIncrement_TwoMoment_Implicit), &
-               C_FUNLOC(ComputeIncrement_TwoMoment_Explicit), &
-               C_FUNLOC(ApplyBoundaryConditions_TwoMoment), &
-               C_FUNLOC(ApplyBoundaryConditions_Euler), &
-               swX, nGF, nCF, nCR, nDOFX, nDOFE, nSpecies, &
-               iE_E0, iE_B0, iE_E1, iE_B1)
-      END DO
-    END IF ! EvolveTwoMoment
+               C_FUNLOC(ComputeIncrement_TwoMoment_Explicit_MF_SinglePatch), &  ! FIXME Change to implicit
+               C_FUNLOC(ComputeIncrement_TwoMoment_Explicit_MF_SinglePatch), &
+               C_FUNLOC(ApplyPositivityLimiter_TwoMoment_MF_SinglePatch), &
+               swX, iE_E0, iE_B0, iE_E1, iE_B1)
 
-    CALL DestroyMesh_MF( MeshX )
-    CALL DestroyFineMask( iMF_FineMask )
+
+        ! FIXME: Post-stage operations
+        ! FIXME: Pass into integrator
+        CALL ApplySlopeLimiter_TwoMoment_MF( GEOM, MF_uGF, MF_uCF, MF_uCR, Verbose_Option = .FALSE.)
+
+        CALL DestroyMesh_MF( MeshX )
+        CALL DestroyFineMask( iMF_FineMask )
+
+      END DO
+
+      ! FIXME: Post-step
+      CALL ApplySlopeLimiter_TwoMoment_MF( GEOM, MF_uGF, MF_uCF, MF_uCR, Verbose_Option = .FALSE. )
+      CALL ApplyPositivityLimiter_TwoMoment_MF( MF_uGF, MF_uCF, MF_uCR )
+
+    END IF ! EvolveTwoMoment
 
     !! IF( EvolveEuler )THEN
     !!   CALL ApplyPositivityLimiter_Euler_MF(MF_uGF, MF_uCF, MF_uDF)

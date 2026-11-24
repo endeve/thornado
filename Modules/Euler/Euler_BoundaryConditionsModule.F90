@@ -94,18 +94,13 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_Euler &
-    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC_Option ) BIND(C, name="ApplyBoundaryConditions_Euler")
+    ( iX_B0, iX_E0, iX_B1, iX_E1, U, iApplyBC_Option )
 
-    USE ISO_C_BINDING
-    INTEGER(C_INT),  INTENT(in)           :: &
+    INTEGER,  INTENT(in)           :: &
       iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
-    REAL(C_DOUBLE), INTENT(inout)        :: &
-      U(1:nDOFX,           &
-        iX_B1(1):iX_E1(1), &
-        iX_B1(2):iX_E1(2), &
-        iX_B1(3):iX_E1(3), &
-        1:nCF)
-    INTEGER(C_INT),  INTENT(in), OPTIONAL :: &
+    REAL(DP), INTENT(inout)        :: &
+      U(1:,iX_B1(1):,iX_B1(2):,iX_B1(3):,1:)
+    INTEGER,  INTENT(in), OPTIONAL :: &
       iApplyBC_Option(3)
 
     INTEGER :: iApplyBC(3)

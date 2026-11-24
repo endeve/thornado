@@ -83,11 +83,13 @@
   PUBLIC :: InitializePositivityLimiter_TwoMoment_MF
   PUBLIC :: FinalizePositivityLimiter_TwoMoment_MF
   PUBLIC :: ApplyPositivityLimiter_TwoMoment_MF
+  PUBLIC :: ApplyPositivityLimiter_TwoMoment_MF_SinglePatch
 
   INTERFACE ApplyPositivityLimiter_TwoMoment_MF
     MODULE PROCEDURE ApplyPositivityLimiter_TwoMoment_MF_MultipleLevels
     MODULE PROCEDURE ApplyPositivityLimiter_TwoMoment_MF_SingleLevel
   END INTERFACE ApplyPositivityLimiter_TwoMoment_MF
+
 
   LOGICAL :: UsePositivityLimiter, UseEnergyLimiter
 
@@ -308,6 +310,170 @@ CONTAINS
     CALL DestroyMesh_MF( MeshX )
 
   END SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF_SingleLevel
+
+
+  SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF_SinglePatch &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, swX_Option ) BIND(C, name="ApplyPositivityLimiter_TwoMoment_MF_SinglePatch")
+    USE ISO_C_BINDING
+
+    INTEGER(C_INT), INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(C_DOUBLE), INTENT(in)    :: &
+      uGF (iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nDOFX*nGF)
+    REAL(C_DOUBLE), INTENT(inout) :: &
+      uCF (iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nDOFX*nCF)
+    REAL(C_DOUBLE), INTENT(inout) :: &
+      uCR (iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nDOFZ*(iZ_E0(1)-iZ_B0(1)+1)*nCR*nSpecies)
+    INTEGER(C_INT), INTENT(in), OPTIONAL :: swX_Option(3)
+
+    REAL(DP), ALLOCATABLE :: G (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: C (:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U (:,:,:,:,:,:,:)
+    REAL(DP)              :: dEM_PL(1:nCR,0:nMaxLevels-1)
+
+    INTEGER       :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3), iX_B(3), iX_E(3), &
+                     iLo_MF(4), swXX(3)
+    INTEGER       :: iZ_B(4), iZ_E(4)
+    TYPE(EdgeMap) :: Edge_Map
+
+    IF( nDOFX .EQ. 1 ) RETURN
+
+    IF( .NOT. UsePositivityLimiter ) RETURN
+
+    swXX = 0
+    IF( PRESENT( swX_Option ) ) &
+      swXX = swX_Option
+
+    dEM_PL = Zero
+
+    iLo_MF = LBOUND( uGF )
+
+    ! FIXME
+    ! iX_B0 = BX % lo
+    ! iX_E0 = BX % hi
+    ! iX_B1 = BX % lo - swX
+    ! iX_E1 = BX % hi + swX
+    iX_B  = iX_B0 - swXX
+    iX_E  = iX_E0 + swXX
+
+    iE_B0 = iZ_B0(1)
+    iE_B1 = iZ_B1(1)
+    iE_E0 = iZ_E0(1)
+    iE_E1 = iZ_E1(1)
+
+    iX_B0 = iZ_B0(2:4)
+    iX_B1 = iZ_B1(2:4)
+    iX_E0 = iZ_E0(2:4)
+    iX_E1 = iZ_E1(2:4)
+
+    iZ_B(1) = iE_B0
+    iZ_E(1) = iE_E0
+
+    iZ_B(2:4) = iX_B
+    iZ_E(2:4) = iX_E
+
+    CALL AllocateArray_X &
+           ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+             [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+             G )
+
+    CALL AllocateArray_X &
+           ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+             [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+             C )
+
+    CALL AllocateArray_Z &
+           ( [ 1       , &
+               iZ_B1(1), &
+               iZ_B1(2), &
+               iZ_B1(3), &
+               iZ_B1(4), &
+               1       , &
+               1        ], &
+             [ nDOFZ   , &
+               iZ_E1(1), &
+               iZ_E1(2), &
+               iZ_E1(3), &
+               iZ_E1(4), &
+               nCR     , &
+               nSpecies ], &
+             U )
+
+    CALL amrex2thornado_X( nGF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uGF, G )
+
+    CALL amrex2thornado_X( nCF, iX_B1, iX_E1, iLo_MF, iX_B, iX_E, uCF, C )
+
+    CALL amrex2thornado_Z &
+           ( nCR, nSpecies, nE, iE_B0, iE_E0, &
+             iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, U )
+
+  ! --- Apply boundary conditions to physical boundaries
+  !     (needed for AMR) ---
+
+    ! FIXME CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+
+    !dEM_PL(1:nCR,iLevel) &
+    !  = dEM_PL(1:nCR,iLevel) + dEnergyMomentum_PL_TwoMoment(1:nCR)
+
+    CALL ApplyBoundaryConditions_Euler_MF &
+         ( iX_B0, iX_E0, iX_B1, iX_E1, C, Edge_Map )
+
+    CALL ApplyBoundaryConditions_TwoMoment_MF &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
+
+    CALL ApplyPositivityLimiter_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U )
+
+    ! FIXME dEM_PL(1:nCR,iLevel) &
+    ! FIXME   = dEM_PL(1:nCR,iLevel) + dEnergyMomentum_PL_TwoMoment(1:nCR)
+
+    CALL thornado2amrex_Z &
+           ( nCR, nSpecies, nE, iE_B0, iE_E0, &
+             iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, U )
+
+    CALL DeallocateArray_Z &
+           ( [ 1       , &
+               iZ_B1(1), &
+               iZ_B1(2), &
+               iZ_B1(3), &
+               iZ_B1(4), &
+               1       , &
+               1        ], &
+             [ nDOFZ   , &
+               iZ_E1(1), &
+               iZ_E1(2), &
+               iZ_E1(3), &
+               iZ_E1(4), &
+               nCR     , &
+               nSpecies ], &
+             U )
+
+    CALL DeallocateArray_X &
+           ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+             [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+             C )
+
+    !CALL amrex_parallel_reduce_sum( dEM_PL(:,iLevel), nCR )
+
+    CALL DeallocateArray_X &
+           ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+             [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+             G )
+
+    ! FIXME CALL amrex_parallel_reduce_sum( dEM_PL(:,iLevel), nCR )
+
+    ! FIXME CALL IncrementPositivityLimiterTally_TwoMoment_MF( dEM_PL )
+
+  END SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF_SinglePatch
 
 
   SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF_MultipleLevels &

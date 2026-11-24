@@ -26,6 +26,7 @@ MODULE MF_EdgeMapModule
   PRIVATE
 
   PUBLIC :: ConstructEdgeMap
+  PUBLIC :: ConstructEdgeMapFromBool
 
   TYPE, PUBLIC :: EdgeMap
     LOGICAL :: IsLowerBoundary(3)
@@ -63,6 +64,18 @@ CONTAINS
     END DO
 
   END SUBROUTINE ConstructEdgeMap
+
+
+  SUBROUTINE ConstructEdgeMapFromBool( lo, hi, Edge_Map )
+    USE ISO_C_BINDING
+
+    LOGICAL(C_BOOL), INTENT(in)    :: lo(3), hi(3)
+    TYPE(EdgeMap)  , INTENT(inout) :: Edge_Map
+
+    Edge_Map % IsLowerBoundary = lo
+    Edge_Map % IsUpperBoundary = hi
+
+  END SUBROUTINE ConstructEdgeMapFromBool
 
 
   SUBROUTINE EdgeMap_GetBC( this, iApplyBC )

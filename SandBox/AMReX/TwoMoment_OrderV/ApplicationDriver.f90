@@ -85,7 +85,8 @@ PROGRAM main
     WriteFieldsAMReX_PlotFile, &
     WriteFieldsAMReX_Checkpoint
   USE MF_TwoMoment_TimeSteppingModule_OrderV_AMReX, ONLY: &
-    Update_AMReX_TimeIntegrator
+    Update_AMReX_TimeIntegrator, &
+    CFL
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
   ApplyBoundaryConditions_Euler_MF
   USE MF_UtilitiesModule, ONLY: &
@@ -165,8 +166,7 @@ PROGRAM main
 
       ELSE
 
-        ! FIXME: CFL
-        ! CALL ComputeTimeStep_TwoMoment_MF( MF_uGF, CFL, dt )
+        CALL ComputeTimeStep_TwoMoment_MF( MF_uGF, CFL, dt )
 
       END IF
 

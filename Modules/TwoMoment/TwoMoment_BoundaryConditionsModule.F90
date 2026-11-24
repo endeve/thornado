@@ -80,19 +80,18 @@ CONTAINS
 
 
   SUBROUTINE ApplyBoundaryConditions_TwoMoment &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, iApplyBC_Option ) BIND(C, name="ApplyBoundaryConditions_TwoMoment")
-    USE ISO_C_BINDING
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, iApplyBC_Option )
 
     ! --- {Z1,Z2,Z3,Z4} = {E,X1,X2,X3} ---
 
-    INTEGER(C_INT),  INTENT(in)    :: &
+    INTEGER,  INTENT(in)    :: &
       iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
-    REAL(C_DOUBLE), INTENT(inout) :: &
+    REAL(DP), INTENT(inout) :: &
       U(1:nDOF, &
         iZ_B1(1):iZ_E1(1),iZ_B1(2):iZ_E1(2), &
         iZ_B1(3):iZ_E1(3),iZ_B1(4):iZ_E1(4), &
         1:nCR,1:nSpecies)
-    INTEGER(C_INT),  INTENT(in), OPTIONAL :: &
+    INTEGER,  INTENT(in), OPTIONAL :: &
       iApplyBC_Option(3)
 
     INTEGER :: iApplyBC(3)
