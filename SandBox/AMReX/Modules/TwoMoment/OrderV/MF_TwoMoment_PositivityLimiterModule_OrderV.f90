@@ -65,8 +65,9 @@
     nE, &
     DEBUG
   USE MF_EdgeMapModule, ONLY: &
+    EdgeMap, &
     ConstructEdgeMap, &
-    EdgeMap
+    ConstructEdgeMapFromBool
   USE MF_TwoMoment_TallyModule, ONLY: &
     IncrementPositivityLimiterTally_TwoMoment_MF
   USE MF_Euler_BoundaryConditionsModule, ONLY: &
@@ -313,7 +314,9 @@ CONTAINS
 
 
   SUBROUTINE ApplyPositivityLimiter_TwoMoment_MF_SinglePatch &
-    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGF, uCF, uCR, swX_Option ) BIND(C, name="ApplyPositivityLimiter_TwoMoment_MF_SinglePatch")
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, lo, hi, uGF, uCF, uCR, swX_Option ) &
+    BIND(C, name="ApplyPositivityLimiter_TwoMoment_MF_SinglePatch")
+
     USE ISO_C_BINDING
 
     INTEGER(C_INT), INTENT(in)    :: &
@@ -333,6 +336,7 @@ CONTAINS
            iZ_B1(3):iZ_E1(3), &
            iZ_B1(4):iZ_E1(4), &
            1:nDOFZ*(iZ_E0(1)-iZ_B0(1)+1)*nCR*nSpecies)
+    LOGICAL(C_BOOL), INTENT(in) :: lo(3), hi(3)
     INTEGER(C_INT), INTENT(in), OPTIONAL :: swX_Option(3)
 
     REAL(DP), ALLOCATABLE :: G (:,:,:,:,:)
@@ -357,11 +361,6 @@ CONTAINS
 
     iLo_MF = LBOUND( uGF )
 
-    ! FIXME
-    ! iX_B0 = BX % lo
-    ! iX_E0 = BX % hi
-    ! iX_B1 = BX % lo - swX
-    ! iX_E1 = BX % hi + swX
     iX_B  = iX_B0 - swXX
     iX_E  = iX_E0 + swXX
 
@@ -416,10 +415,10 @@ CONTAINS
            ( nCR, nSpecies, nE, iE_B0, iE_E0, &
              iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, U )
 
-  ! --- Apply boundary conditions to physical boundaries
-  !     (needed for AMR) ---
+    ! --- Apply boundary conditions to physical boundaries
+    !     (needed for AMR) ---
 
-    ! FIXME CALL ConstructEdgeMap( iLevel, BX, Edge_Map )
+    CALL ConstructEdgeMapFromBool( lo, hi, Edge_Map )
 
     !dEM_PL(1:nCR,iLevel) &
     !  = dEM_PL(1:nCR,iLevel) + dEnergyMomentum_PL_TwoMoment(1:nCR)
