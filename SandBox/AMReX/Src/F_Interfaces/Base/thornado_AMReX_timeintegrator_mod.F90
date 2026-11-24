@@ -15,6 +15,7 @@ MODULE thornado_amrex_timeintegrator_module
     SUBROUTINE amrex_fi_integrate_twomoment &
         ( GEOM, GE, MF_uGF, MF_uCF, MF_uCR, t, dt, &
           rhs_collision_p, rhs_streaming_p, &
+          applyslopelimiter_p, &
           applypositivitylimiter_p, &
           swX, iE_E0, iE_B0, iE_E1, iE_B1) BIND(c)
       IMPORT
@@ -25,6 +26,7 @@ MODULE thornado_amrex_timeintegrator_module
       REAL(amrex_real),   INTENT(in)    :: GE(*)
       REAL(amrex_real), VALUE           :: t, dt
       TYPE(c_funptr), VALUE             :: rhs_collision_p, rhs_streaming_p
+      TYPE(c_funptr), VALUE             :: applyslopelimiter_p
       TYPE(c_funptr), VALUE             :: applypositivitylimiter_p
     END SUBROUTINE amrex_fi_integrate_twomoment
 
@@ -34,6 +36,7 @@ CONTAINS
 
   SUBROUTINE amrex_integrate_twomoment &
     ( GEOM, GE, MF_uGF, MF_uCF, MF_uCR, t_new, dt, rhs_collision_p, rhs_streaming_p, &
+      applyslopelimiter_p, &
       applypositivitylimiter_p, &
       swX, iE_E0, iE_B0, iE_E1, iE_B1 )
 
@@ -45,6 +48,7 @@ CONTAINS
     REAL(amrex_real),     INTENT(in)    :: t_new, dt
     INTEGER(c_int),       INTENT(in)    :: swX(3), iE_E0, iE_B0, iE_E1, iE_B1
     TYPE(c_funptr), VALUE               :: rhs_collision_p, rhs_streaming_p
+    TYPE(c_funptr), VALUE               :: applyslopelimiter_p
     TYPE(c_funptr), VALUE               :: applypositivitylimiter_p
 
     CALL amrex_fi_integrate_twomoment &
@@ -53,6 +57,7 @@ CONTAINS
                t_new, dt, &
                rhs_collision_p, &
                rhs_streaming_p, &
+               applyslopelimiter_p, &
                applypositivitylimiter_p, &
                swX, iE_E0, iE_B0, iE_E1, iE_B1 &
                )

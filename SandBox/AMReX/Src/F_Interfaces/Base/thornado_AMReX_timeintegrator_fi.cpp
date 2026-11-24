@@ -11,6 +11,11 @@ using Thornado_rhs_funptr_t = void(*)(
     Real*, Real*, Real*, Real*,                     // GE, GX, U_F, U_R, dU_R
     bool*);                                         // Verbose_Option
 
+using Thornado_sl_funptr_t = void(*)(
+    const int*, const int*, const int*, const int*, // iZ_B0, iZ_E0, iZ_B1, iZ_E1
+    bool*, bool*,                                   // lo, hi
+    Real*, Real*, Real*);                           // GE, GX, U_F, U_R
+
 using Thornado_pl_funptr_t = void(*)(
     const int*, const int*, const int*, const int*, // iZ_B0, iZ_E0, iZ_B1, iZ_E1
     bool*, bool*,                                   // lo, hi
@@ -35,6 +40,7 @@ extern "C" {
       Real dt,
       Thornado_rhs_funptr_t compute_rhs_collision,
       Thornado_rhs_funptr_t compute_rhs_streaming,
+      Thornado_sl_funptr_t applyslopelimiter,
       Thornado_pl_funptr_t applypositivitylimiter,
       int swX[3], int iE_E0, int iE_B0, int iE_E1, int iE_B1) {
 
@@ -133,6 +139,13 @@ extern "C" {
 
             bool lo[3], hi[3];
             have_same_bounds(tb, GEOM->Domain(), lo, hi);
+
+            amrex::Print() << "Applying slope limiter\n";
+            applyslopelimiter(
+                iZ_B0, iZ_E0, iZ_B1, iZ_E1, lo, hi,
+                G[mfi].dataPtr(),
+                F[mfi].dataPtr(),
+                R[mfi].dataPtr());
 
             amrex::Print() << "Applying positivity limiter\n";
             applypositivitylimiter(

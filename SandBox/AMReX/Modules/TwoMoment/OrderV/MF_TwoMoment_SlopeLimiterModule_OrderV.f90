@@ -67,7 +67,8 @@ MODULE MF_TwoMoment_SlopeLimiterModule
     ApplyBoundaryConditions_TwoMoment_MF
   USE MF_EdgeMapModule, ONLY: &
     EdgeMap,          &
-    ConstructEdgeMap
+    ConstructEdgeMap, &
+    ConstructEdgeMapFromBool
   USE MF_MeshModule, ONLY: &
     CreateMesh_MF, &
     DestroyMesh_MF
@@ -78,6 +79,7 @@ MODULE MF_TwoMoment_SlopeLimiterModule
   PUBLIC :: InitializeSlopeLimiter_TwoMoment_MF
   PUBLIC :: FinalizeSlopeLimiter_TwoMoment_MF
   PUBLIC :: ApplySlopeLimiter_TwoMoment_MF
+  PUBLIC :: ApplySlopeLimiter_TwoMoment_MF_SinglePatch
 
   LOGICAL :: UseSlopeLimiter
 
@@ -279,6 +281,133 @@ CONTAINS
     END DO ! iLevel = 0, nLevels-1
 
   END SUBROUTINE ApplySlopeLimiter_TwoMoment_MF
+
+
+  SUBROUTINE ApplySlopeLimiter_TwoMoment_MF_SinglePatch &
+    ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, lo, hi, uGF, uCF, uCR ) &
+    BIND(C, name="ApplySlopeLimiter_TwoMoment_MF_SinglePatch")
+
+    USE ISO_C_BINDING
+
+    INTEGER(C_INT), INTENT(in)    :: &
+      iZ_B0(4), iZ_E0(4), iZ_B1(4), iZ_E1(4)
+    REAL(C_DOUBLE), INTENT(in)    :: &
+      uGF (iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nDOFX*nGF)
+    REAL(C_DOUBLE), INTENT(inout) :: &
+      uCF (iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nDOFX*nCF)
+    REAL(C_DOUBLE), INTENT(inout) :: &
+      uCR (iZ_B1(2):iZ_E1(2), &
+           iZ_B1(3):iZ_E1(3), &
+           iZ_B1(4):iZ_E1(4), &
+           1:nDOFZ*(iZ_E0(1)-iZ_B0(1)+1)*nCR*nSpecies)
+    LOGICAL(C_BOOL), INTENT(in) :: lo(3), hi(3)
+
+    REAL(DP), ALLOCATABLE :: G(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: C(:,:,:,:,:)
+    REAL(DP), ALLOCATABLE :: U(:,:,:,:,:,:,:)
+
+    INTEGER :: iX_B0(3), iX_E0(3), iX_B1(3), iX_E1(3)
+    INTEGER :: iLo_MF(4)
+
+    TYPE(EdgeMap) :: Edge_Map
+
+    iLo_MF = LBOUND( uGF )
+
+    iE_B0 = iZ_B0(1)
+    iE_B1 = iZ_B1(1)
+    iE_E0 = iZ_E0(1)
+    iE_E1 = iZ_E1(1)
+
+    iX_B0 = iZ_B0(2:4)
+    iX_B1 = iZ_B1(2:4)
+    iX_E0 = iZ_E0(2:4)
+    iX_E1 = iZ_E1(2:4)
+
+    CALL AllocateArray_X &
+           ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+             [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+             G )
+
+    CALL AllocateArray_X &
+           ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+             [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+             C )
+
+    CALL AllocateArray_Z &
+           ( [ 1       , &
+               iZ_B1(1), &
+               iZ_B1(2), &
+               iZ_B1(3), &
+               iZ_B1(4), &
+               1       , &
+               1        ], &
+             [ nDOFZ   , &
+               iZ_E1(1), &
+               iZ_E1(2), &
+               iZ_E1(3), &
+               iZ_E1(4), &
+               nCR     , &
+               nSpecies ], &
+             U )
+
+    CALL amrex2thornado_X &
+           ( nGF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uGF, G )
+
+    CALL amrex2thornado_X &
+           ( nCF, iX_B1, iX_E1, iLo_MF, iX_B1, iX_E1, uCF, C )
+
+    CALL amrex2thornado_Z &
+           ( nCR, nSpecies, nE, iE_B0, iE_E0, &
+             iZ_B1, iZ_E1, iLo_MF, iZ_B1, iZ_E1, uCR, U )
+
+    ! --- Apply boundary conditions to physical boundaries ---
+
+    CALL ConstructEdgeMapFromBool( lo, hi, Edge_Map )
+
+    CALL ApplyBoundaryConditions_TwoMoment_MF &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, U, Edge_Map )
+
+    CALL ApplySlopeLimiter_TwoMoment &
+           ( iZ_B0, iZ_E0, iZ_B1, iZ_E1, uGE, G, C, U, &
+             SuppressBC_Option = .TRUE. )
+    CALL thornado2amrex_Z &
+           ( nCR, nSpecies, nE, iE_B0, iE_E0, &
+             iZ_B1, iZ_E1, iLo_MF, iZ_B0, iZ_E0, uCR, U )
+
+    CALL DeallocateArray_Z &
+           ( [ 1       , &
+               iZ_B1(1), &
+               iZ_B1(2), &
+               iZ_B1(3), &
+               iZ_B1(4), &
+               1       , &
+               1        ], &
+             [ nDOFZ   , &
+               iZ_E1(1), &
+               iZ_E1(2), &
+               iZ_E1(3), &
+               iZ_E1(4), &
+               nCR     , &
+               nSpecies ], &
+             U )
+
+    CALL DeallocateArray_X &
+           ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+             [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nCF ], &
+             C )
+
+    CALL DeallocateArray_X &
+           ( [ 1    , iX_B1(1), iX_B1(2), iX_B1(3), 1   ], &
+             [ nDOFX, iX_E1(1), iX_E1(2), iX_E1(3), nGF ], &
+             G )
+
+  END SUBROUTINE ApplySlopeLimiter_TwoMoment_MF_SinglePatch
 
 
 END MODULE MF_TwoMoment_SlopeLimiterModule
